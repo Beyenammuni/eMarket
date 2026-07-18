@@ -1,0 +1,17 @@
+C:\Users\bayan\OneDrive\سطح المكتب\eMarket\src\eMarket.Application\bin\Debug\net10.0\eMarket.Application.deps.json
+C:\Users\bayan\OneDrive\سطح المكتب\eMarket\src\eMarket.Application\bin\Debug\net10.0\eMarket.Application.dll
+C:\Users\bayan\OneDrive\سطح المكتب\eMarket\src\eMarket.Application\bin\Debug\net10.0\eMarket.Application.pdb
+C:\Users\bayan\OneDrive\سطح المكتب\eMarket\src\eMarket.Application\bin\Debug\net10.0\eMarket.Domain.dll
+C:\Users\bayan\OneDrive\سطح المكتب\eMarket\src\eMarket.Application\bin\Debug\net10.0\eMarket.SharedKernel.dll
+C:\Users\bayan\OneDrive\سطح المكتب\eMarket\src\eMarket.Application\bin\Debug\net10.0\eMarket.Domain.pdb
+C:\Users\bayan\OneDrive\سطح المكتب\eMarket\src\eMarket.Application\bin\Debug\net10.0\eMarket.SharedKernel.pdb
+C:\Users\bayan\OneDrive\سطح المكتب\eMarket\src\eMarket.Application\obj\Debug\net10.0\eMarket.Application.csproj.AssemblyReference.cache
+C:\Users\bayan\OneDrive\سطح المكتب\eMarket\src\eMarket.Application\obj\Debug\net10.0\eMarket.Application.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\bayan\OneDrive\سطح المكتب\eMarket\src\eMarket.Application\obj\Debug\net10.0\eMarket.Application.AssemblyInfoInputs.cache
+C:\Users\bayan\OneDrive\سطح المكتب\eMarket\src\eMarket.Application\obj\Debug\net10.0\eMarket.Application.AssemblyInfo.cs
+C:\Users\bayan\OneDrive\سطح المكتب\eMarket\src\eMarket.Application\obj\Debug\net10.0\eMarket.Application.csproj.CoreCompileInputs.cache
+C:\Users\bayan\OneDrive\سطح المكتب\eMarket\src\eMarket.Application\obj\Debug\net10.0\eMarket..D4CD928A.Up2Date
+C:\Users\bayan\OneDrive\سطح المكتب\eMarket\src\eMarket.Application\obj\Debug\net10.0\eMarket.Application.dll
+C:\Users\bayan\OneDrive\سطح المكتب\eMarket\src\eMarket.Application\obj\Debug\net10.0\refint\eMarket.Application.dll
+C:\Users\bayan\OneDrive\سطح المكتب\eMarket\src\eMarket.Application\obj\Debug\net10.0\eMarket.Application.pdb
+C:\Users\bayan\OneDrive\سطح المكتب\eMarket\src\eMarket.Application\obj\Debug\net10.0\ref\eMarket.Application.dll
