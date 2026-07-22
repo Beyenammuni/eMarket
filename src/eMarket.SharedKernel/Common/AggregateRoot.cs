@@ -11,7 +11,7 @@ public abstract class AggregateRoot<TKey> : Entity<TKey>, IAggregateRoot
     where TKey : IEquatable<TKey>
 {
     protected AggregateRoot()
-        : base(new List<IDomainEvent>())
+        : base([])
     {
     }
 }
