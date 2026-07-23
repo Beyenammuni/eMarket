@@ -6,14 +6,11 @@
     <Project Path="src/eMarket.Infrastructure/eMarket.Infrastructure.csproj" />
     <Project Path="src/eMarket.SharedKernel/eMarket.SharedKernel.csproj" />
   </Folder>
-  <Folder Name="/tests/" />
-  <Folder Name="/tests/EMarket.ArchitectureTests/">
-    <Project Path="tests/EMarket.ArchitectureTests/eMarket.ArchitectureTests.csproj" />
-  </Folder>
-  <Folder Name="/tests/EMarket.IntegrationTests/">
-    <Project Path="tests/EMarket.IntegrationTests/eMarket.IntegrationTests.csproj" />
-  </Folder>
-  <Folder Name="/tests/EMarket.UnitTests/">
-    <Project Path="tests/EMarket.UnitTests/eMarket.UnitTests.csproj" />
+  <Folder Name="/src/EMarket.Api/" />
+  <Folder Name="/src/EMarket.Domain/" />
+  <Folder Name="/tests/">
+    <Project Path="tests/eMarket.ArchitectureTests/eMarket.ArchitectureTests.csproj" />
+    <Project Path="tests/eMarket.IntegrationTests/eMarket.IntegrationTests.csproj" />
+    <Project Path="tests/eMarket.UnitTests/eMarket.UnitTests.csproj" />
   </Folder>
 </Solution>
