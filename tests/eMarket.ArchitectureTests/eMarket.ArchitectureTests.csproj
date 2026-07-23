@@ -19,9 +19,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\EMarket.Domain\eMarket.Domain.csproj" />
-    <ProjectReference Include="..\..\src\EMarket.Application\eMarket.Application.csproj" />
-    <ProjectReference Include="..\..\src\EMarket.Infrastructure\eMarket.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\eMarket.Domain\eMarket.Domain.csproj" />
+    <ProjectReference Include="..\..\src\eMarket.Application\eMarket.Application.csproj" />
+    <ProjectReference Include="..\..\src\eMarket.Infrastructure\eMarket.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

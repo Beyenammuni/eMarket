@@ -19,7 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\EMarket.Api\eMarket.Api.csproj" />
+    <ProjectReference Include="..\..\src\eMarket.Api\eMarket.Api.csproj" />
   </ItemGroup>
 
 </Project>

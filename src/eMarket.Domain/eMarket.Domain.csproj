@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <ProjectReference Include="..\EMarket.SharedKernel\eMarket.SharedKernel.csproj" />
+    <ProjectReference Include="..\eMarket.SharedKernel\eMarket.SharedKernel.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

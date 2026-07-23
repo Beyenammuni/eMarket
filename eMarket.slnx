@@ -6,8 +6,6 @@
     <Project Path="src/eMarket.Infrastructure/eMarket.Infrastructure.csproj" />
     <Project Path="src/eMarket.SharedKernel/eMarket.SharedKernel.csproj" />
   </Folder>
-  <Folder Name="/src/EMarket.Api/" />
-  <Folder Name="/src/EMarket.Domain/" />
   <Folder Name="/tests/">
     <Project Path="tests/eMarket.ArchitectureTests/eMarket.ArchitectureTests.csproj" />
     <Project Path="tests/eMarket.IntegrationTests/eMarket.IntegrationTests.csproj" />

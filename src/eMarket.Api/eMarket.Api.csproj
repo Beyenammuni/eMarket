@@ -11,8 +11,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\EMarket.Application\eMarket.Application.csproj" />
-    <ProjectReference Include="..\EMarket.Infrastructure\eMarket.Infrastructure.csproj" />
+    <ProjectReference Include="..\eMarket.Application\eMarket.Application.csproj" />
+    <ProjectReference Include="..\eMarket.Infrastructure\eMarket.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>
