@@ -1,19 +1,20 @@
-name: Continous Integration
+name: Continuous Integration
 
 on:
-    push:
-      branches: 
-        - main
-        - develop
+  push:
+    branches:
+      - main
+      - develop
 
-    pull_request: 
-       branches: 
-         - main
-         - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+
 jobs:
   build:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -22,12 +23,12 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
-          
+
       - name: Restore Dependencies
         run: dotnet restore eMarket.slnx
 
       - name: Build Solution
         run: dotnet build eMarket.slnx --configuration Release --no-restore
 
-      - name: Run Unit Tests
-        run: dotnet test eMarket.slnx --configuration Release --no-build
+      - name: Run Tests
+        run: dotnet test eMarket.slnx --configuration Release --no-build --verbosity normal
