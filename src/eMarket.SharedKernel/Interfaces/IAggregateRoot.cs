@@ -1,4 +1,4 @@
-namespace eMarket.SharedKernel.Interfaces
+namespace eMarket.SharedKernel.DomainEvent
 {
     public interface IAggregateRoot
     {

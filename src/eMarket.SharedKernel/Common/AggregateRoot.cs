@@ -1,6 +1,6 @@
 using System.Diagnostics;
 using System.Collections.Generic;
-using eMarket.SharedKernel.Interfaces;
+using eMarket.SharedKernel.DomainEvent;
 
 namespace  eMarket.SharedKernel.Common;
 

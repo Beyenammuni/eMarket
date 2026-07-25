@@ -1,6 +1,6 @@
-namespace eMarket.SharedKernel.Interfaces
+namespace eMarket.SharedKernel.DomainEvent
 {
-    public abstract class DomainEvent : IDomainEvent
+    public abstract record DomainEvent : IDomainEvent
     {
         protected DomainEvent()
         {

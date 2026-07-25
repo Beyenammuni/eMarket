@@ -1,4 +1,4 @@
-using eMarket.SharedKernel.Interfaces;
+using eMarket.SharedKernel.DomainEvent;
 
 namespace eMarket.SharedKernel.Common
 {

@@ -1,4 +1,5 @@
 using eMarket.Domain.Identity.Errors;
+using eMarket.Domain.Identity.Events;
 using eMarket.Domain.Identity.ValueObjects;
 using eMarket.SharedKernel.Common;
 using eMarket.SharedKernel.Results;
@@ -56,6 +57,8 @@ public sealed class User : AggregateRoot<UserId>
         {
             return Result<User>.Failure(roleResult.Error);
         }
+        user.AddDomainEvent(
+    new UserRegisteredDomainEvent(user.Id));
 
         return Result<User>.Success(user);
     }
@@ -67,6 +70,29 @@ public sealed class User : AggregateRoot<UserId>
         }
 
         _roles.Add(role);
+        AddDomainEvent(
+    new UserRoleAssignedDomainEvent(Id, role));
+
+        return Result.Success();
+    }
+    public Result RemoveRole(UserRole role)
+    {
+        if (!_roles.Contains(role))
+        {
+            return Result.Success();
+        }
+
+        if (_roles.Count == 1)
+        {
+            return Result.Failure(UserErrors.LastRoleCannotBeRemoved);
+        }
+
+        _roles.Remove(role);
+
+        AddDomainEvent(
+            new UserRoleRemovedDomainEvent(
+                Id,
+                role));
 
         return Result.Success();
     }
@@ -79,7 +105,8 @@ public sealed class User : AggregateRoot<UserId>
 
         EmailVerified = true;
 
-        // AddDomainEvent(new UserEmailVerifiedDomainEvent(Id));
+        AddDomainEvent(
+     new UserEmailVerifiedDomainEvent(Id));
 
         return Result.Success();
     }
@@ -92,13 +119,20 @@ public sealed class User : AggregateRoot<UserId>
 
         Email = newEmail;
 
-        // AddDomainEvent(new UserEmailChangedDomainEvent(Id));
+        AddDomainEvent(
+    new UserEmailChangedDomainEvent(Id, newEmail));
 
         return Result.Success();
     }
     public void RecordLogin()
     {
         LastLoginAt = DateTime.UtcNow;
+
+
+        AddDomainEvent(
+            new UserLoggedInDomainEvent(
+                Id,
+                LastLoginAt.Value));
     }
     public Result Activate()
     {
@@ -108,6 +142,9 @@ public sealed class User : AggregateRoot<UserId>
         }
 
         Status = UserStatus.Active;
+
+        AddDomainEvent(
+    new UserActivatedDomainEvent(Id));
 
         return Result.Success();
     }
@@ -119,13 +156,10 @@ public sealed class User : AggregateRoot<UserId>
         }
 
         Status = UserStatus.Suspended;
+        AddDomainEvent(
+    new UserSuspendedDomainEvent(Id));
 
         return Result.Success();
     }
-    // 5. Behaviors
-    // AssignRole()
-    // RemoveRole()
-    // ChangeEmail()
-    // VerifyEmail()
 }
 

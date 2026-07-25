@@ -1,6 +1,11 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
+    <PackageReference Include="MediatR" Version="14.2.0" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\eMarket.Domain\eMarket.Domain.csproj" />
     <ProjectReference Include="..\eMarket.SharedKernel\eMarket.SharedKernel.csproj" />
   </ItemGroup>
