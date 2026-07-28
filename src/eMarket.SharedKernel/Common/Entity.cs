@@ -7,7 +7,7 @@ namespace eMarket.SharedKernel.Common
     /// </summary>
     public abstract class Entity<Tkey> : IEntity<Tkey>, IHasDomainEvents
     {
-        private List<IDomainEvent> _domainEvents = [];
+        private readonly List<IDomainEvent> _domainEvents = [];
 
         protected Entity(List<IDomainEvent> domainEvents)
         {

@@ -1,4 +1,6 @@
 using eMarket.Domain.Identity;
+using eMarket.Infrastructure.Persistence.Converters;
+using EMarket.SharedKernel.Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -11,6 +13,10 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.ToTable("Users");
 
         builder.HasKey(x => x.Id);
+
+        builder.Property(x => x.Id)
+    .HasConversion(new StronglyTypedIdConverter<UserId>(UserId.Create))
+    .Metadata.SetValueComparer(new StronglyTypedIdComparer<UserId>());
 
         builder.Property(x => x.Id)
             .ValueGeneratedNever();
@@ -35,6 +41,8 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
                 .HasMaxLength(255)
                 .IsRequired();
         });
+        builder.HasIndex(x => x.Email)
+            .IsUnique();
 
         builder.OwnsOne(x => x.PhoneNumber, phone =>
         {
@@ -43,9 +51,11 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
                 .HasMaxLength(20)
                 .IsRequired();
         });
-
+        builder.Ignore(x => x.Roles);
         builder.Property(x => x.Status)
-            .HasConversion<string>();
+    .HasConversion(new EnumerationConverter<UserStatus>());
+
+        builder.Ignore(x => x.DomainEvents);
 
         builder.Property(x => x.EmailVerified);
 

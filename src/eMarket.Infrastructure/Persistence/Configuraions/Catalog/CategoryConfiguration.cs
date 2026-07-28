@@ -1,4 +1,4 @@
-using eMarket.Domain.Catalog;
+using eMarket.Domain.Catalog.Categories;
 using eMarket.Infrastructure.Persistence.Configurations.Base;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
