@@ -8,10 +8,4 @@ namespace  eMarket.SharedKernel.Common;
 /// Represents an Aggregate Root in the domain.
 /// </summary>
 public abstract class AggregateRoot<TKey> : Entity<TKey>, IAggregateRoot
-    where TKey : IEquatable<TKey>
-{
-    protected AggregateRoot()
-        : base([])
-    {
-    }
-}
+    where TKey : IEquatable<TKey>;

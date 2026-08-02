@@ -24,6 +24,7 @@ public sealed class CategoryConfiguration
                 .IsRequired();
         });
 
+
         builder.Property(x => x.Status)
             .HasConversion<string>()
             .IsRequired();

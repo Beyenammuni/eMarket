@@ -36,6 +36,7 @@ public sealed class Result<T> : Result{
         Value = value;
     }
 
+
     public T? Value { get; }
 
     public static Result<T> Success(T value)

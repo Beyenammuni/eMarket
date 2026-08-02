@@ -1,6 +1,7 @@
-using FluentAssertions;
 using eMarket.Domain.Catalog.Categories;
+using eMarket.Domain.Catalog.Categories.Events;
 using eMarket.Domain.Catalog.Categories.ValueObjects;
+using FluentAssertions;
 
 namespace eMarket.UnitTests.Catalog.Categories;
 
@@ -73,5 +74,91 @@ public class CategoryTests
         category.Activate();
 
         category.Status.Should().Be(CategoryStatus.Active);
+    }
+    [Fact]
+    public void Rename_Should_Update_Name()
+    {
+        var category = Category
+            .Create(CategoryName.Create("Electronics"))
+            .Value;
+
+        var result = category.Rename(
+            CategoryName.Create("Phones"));
+
+        result.IsSuccess.Should().BeTrue();
+
+        category.Name.Value.Should().Be("Phones");
+    }
+    [Fact]
+    public void Rename_Should_Return_Failure_When_Name_Is_Same()
+    {
+        var category = Category
+            .Create(CategoryName.Create("Electronics"))
+            .Value;
+
+        var result = category.Rename(
+            CategoryName.Create("Electronics"));
+
+        result.IsFailure.Should().BeTrue();
+
+        result.Error.Should().Be(CategoryErrors.SameName);
+    }
+    [Fact]
+    public void Rename_Should_Add_Domain_Event()
+    {
+        var category = Category
+            .Create(CategoryName.Create("Electronics"))
+            .Value;
+
+        category.ClearDomainEvents();
+
+        category.Rename(
+            CategoryName.Create("Phones"));
+
+        category.DomainEvents.Should().ContainSingle();
+
+        category.DomainEvents.First()
+            .Should()
+            .BeOfType<CategoryRenamedDomainEvent>();
+    }
+    [Fact]
+    public void Deactivate_Should_Set_Status_To_Inactive()
+    {
+        var category = Category.Create(
+            CategoryName.Create("Books"))
+            .Value;
+
+        category.Deactivate();
+
+        category.Status.Should().Be(CategoryStatus.Inactive);
+    }
+    [Fact]
+    public void Activate_Should_Set_Status_To_Active()
+    {
+        var category = Category.Create(
+            CategoryName.Create("Books"))
+            .Value;
+
+        category.Deactivate();
+
+        category.Activate();
+
+        category.Status.Should().Be(CategoryStatus.Active);
+    }
+    [Fact]
+    public void Deactivate_Should_Add_Domain_Event()
+    {
+        var category = Category.Create(
+            CategoryName.Create("Books"))
+            .Value;
+
+        category.ClearDomainEvents();
+
+        category.Deactivate();
+
+        category.DomainEvents.Should()
+            .ContainSingle()
+            .Which.Should()
+            .BeOfType<CategoryDeactivatedDomainEvent>();
     }
 }

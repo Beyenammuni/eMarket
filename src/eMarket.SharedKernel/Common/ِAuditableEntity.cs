@@ -5,7 +5,7 @@ namespace  eMarket.SharedKernel.Common;
 public class AuditableEntity<TKey> : Entity<TKey> 
 where TKey : IEquatable<TKey>
 {
-    public AuditableEntity(List<IDomainEvent> domainEvents) : base(domainEvents) { }
+    public AuditableEntity(List<IDomainEvent> domainEvents) : base() { }
 
     public DateTime CreatedOnUtc { get; protected set; }
     public string? CreatedBy { get; protected set; }

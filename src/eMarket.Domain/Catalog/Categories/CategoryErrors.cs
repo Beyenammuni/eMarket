@@ -28,4 +28,12 @@ public static class CategoryErrors
         new(
             "Category.Status.Inactive",
             "Category is already inactive.");
+    public static readonly Error NameAlreadyExists =
+    new(
+        "Category.Name.AlreadyExists",
+        "A category with the same name already exists.");
+    public static readonly Error NotFound =
+    new(
+        "Category.NotFound",
+        "The category was not found.");
 }

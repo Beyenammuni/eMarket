@@ -20,7 +20,7 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
 
         builder.Property(x => x.Id)
             .ValueGeneratedNever();
-
+        
         builder.OwnsOne(x => x.FullName, name =>
         {
             name.Property(p => p.FirstName)
@@ -33,7 +33,6 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
                 .HasMaxLength(100)
                 .IsRequired();
         });
-
         builder.OwnsOne(x => x.Email, email =>
         {
             email.Property(p => p.Value)
@@ -41,8 +40,6 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
                 .HasMaxLength(255)
                 .IsRequired();
         });
-        builder.HasIndex(x => x.Email)
-            .IsUnique();
 
         builder.OwnsOne(x => x.PhoneNumber, phone =>
         {

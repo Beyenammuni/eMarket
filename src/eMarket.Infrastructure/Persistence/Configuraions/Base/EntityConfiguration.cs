@@ -28,6 +28,7 @@ public abstract class EntityConfiguration<TEntity, TId>
         ConfigureEntity(builder);
     }
 
+
     protected abstract TId CreateId(Guid value);
 
     protected abstract void ConfigureEntity(
