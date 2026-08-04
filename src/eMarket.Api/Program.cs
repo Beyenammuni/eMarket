@@ -1,4 +1,5 @@
 using eMarket.Api.Endpoints;
+using eMarket.Api.Endpoints.Businesses;
 using eMarket.Infrastructure.Identity;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -8,6 +9,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddOpenApi();
 builder.Services.AddSwaggerGen();
 builder.Services.AddIdentityServices(builder.Configuration);
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -16,10 +18,11 @@ if (app.Environment.IsDevelopment())
     app.MapSwagger();
     app.MapSwaggerUI();
 }
-app.MapEndpoints();
 
 app.UseHttpsRedirection();
-
-
+//app.UseAuthentication();
+//app.UseAuthorization();
+app.MapEndpoints();
+app.MapBusinessEndpoints();
 
 app.Run();
