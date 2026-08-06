@@ -1,6 +1,7 @@
 using eMarket.Application.Behaviors;
 using eMarket.Application.Catalog.Categories.Commands.CreateCategory;
 using eMarket.Application.Common.Interfaces;
+using eMarket.Infrastructure.Authentication;
 using eMarket.Infrastructure.Messaging;
 using eMarket.Infrastructure.Persistence;
 using eMarket.Infrastructure.Persistence.Interceptors;
@@ -34,9 +35,19 @@ namespace eMarket.Infrastructure.Identity
                 options.UseSqlServer(
                     configuration.GetConnectionString("DefaultConnection"));
             });
-            services.AddScoped<ICategoryRepository, CategoryRepository>();
             services.AddScoped<IUnitOfWork, UnitOfWork>();
             services.AddScoped<ICategoryRepository, CategoryRepository>();
+            services.AddScoped<IBusinessRepository, BusinessRepository>();
+            services.AddHttpContextAccessor();
+            services.AddScoped<ICurrentUser, CurrentUser>();
+            services.AddScoped<IBusinessDbContext>(sp =>
+    sp.GetRequiredService<AppDbContext>());
+
+            services.AddScoped<ICatalogDbContext>(sp =>
+                sp.GetRequiredService<AppDbContext>());
+
+            services.AddScoped<IIdentityDbContext>(sp =>
+                sp.GetRequiredService<AppDbContext>());
         }
     }
 }

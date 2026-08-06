@@ -64,6 +64,7 @@ public sealed class Business : AggregateRoot<BusinessId>
             new BusinessMember(
                 BusinessMemberId.New(),
                 ownerId,
+                Id,
                 BusinessRole.Owner));
     }
     public Result Activate()
@@ -120,6 +121,7 @@ public sealed class Business : AggregateRoot<BusinessId>
         var member = new BusinessMember(
             BusinessMemberId.New(),
             userId,
+            Id,
             role);
 
         _members.Add(member);
@@ -186,6 +188,15 @@ public sealed class Business : AggregateRoot<BusinessId>
         return Result.Success();
     }
 
+    public Result Update(
+    BusinessName name,
+    BusinessType type)
+    {
+        Name = name;
+        Type = type;
+
+        return Result.Success();
+    }
     public Result TransferOwnership(
     UserId currentOwnerId,
     UserId newOwnerId)

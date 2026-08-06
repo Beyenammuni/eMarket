@@ -1,4 +1,3 @@
-using eMarket.SharedKernel.Common;
 using EMarket.SharedKernel.Common;
 
 namespace eMarket.Domain.Businesses.ValueObjects;

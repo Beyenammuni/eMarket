@@ -1,8 +1,7 @@
-using eMarket.Application.Businesses.Commands;
 using eMarket.Application.Businesses.Commands.CreateBusiness;
 using MediatR;
 
-namespace eMarket.Api.Endpoints.Businesses;
+namespace eMarket.Api.Endpoints.Businesses.Commands;
 
 public static class CreateBusinessEndpoint
 {

@@ -14,16 +14,19 @@ public sealed class BusinessMember : Entity<BusinessMemberId>
     internal BusinessMember(
         BusinessMemberId id,
         UserId userId,
+        BusinessId businessId,
         BusinessRole role)
     {
         Id = id;
         UserId = userId;
+        BusinessId = businessId;
         Role = role;
         JoinedAt = DateTime.UtcNow;
         IsActive = true;
     }
 
     public UserId UserId { get; private set; } = default!;
+    public BusinessId BusinessId { get; private set; } = default!;
 
     public BusinessRole Role { get; private set; } = default!;
 

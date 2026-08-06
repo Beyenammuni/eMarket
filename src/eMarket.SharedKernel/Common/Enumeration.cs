@@ -69,4 +69,16 @@ public abstract class Enumeration : IComparable
             ?? throw new InvalidOperationException(
                 $"'{name}' is not valid for {typeof(T).Name}");
     }
+    public static TEnumeration FromValue<TEnumeration>(int value)
+    where TEnumeration : Enumeration
+    {
+        var matchingItem = GetAll<TEnumeration>()
+            .FirstOrDefault(x => x.Id == value);
+
+        if (matchingItem is null)
+            throw new InvalidOperationException(
+                $"'{value}' is not a valid value for {typeof(TEnumeration).Name}");
+
+        return matchingItem;
+    }
 }

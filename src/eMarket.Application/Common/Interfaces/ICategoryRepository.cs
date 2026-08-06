@@ -1,3 +1,4 @@
+using eMarket.Domain.Businesses;
 using eMarket.Domain.Catalog.Categories;
 using eMarket.Domain.Catalog.Categories.ValueObjects;
 
@@ -23,4 +24,6 @@ public interface ICategoryRepository
         CancellationToken cancellationToken = default);
     Task<List<Category>> GetAllAsync(
     CancellationToken cancellationToken = default);
+
+   
 }

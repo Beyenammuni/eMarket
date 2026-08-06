@@ -23,6 +23,10 @@ public static class BusinessErrors
         new(
             "Business.Status.AlreadyActive",
             "Business is already active.");
+    public static readonly Error AlreadyExists =
+        new(
+            "Business.Status.AlreadyExists",
+            "Business is already exists.");
 
     public static readonly Error AlreadySuspended =
         new(
@@ -73,6 +77,10 @@ public static class BusinessErrors
     new(
         "Business.Member.AlreadyHasRole",
         "The member already has this role.");
+    public static readonly Error NotFound =
+    new(
+        "Business.Member.NotFound",
+        "The Business not fount.");
 
     public static readonly Error CannotChangeOwnerRole =
         new(
