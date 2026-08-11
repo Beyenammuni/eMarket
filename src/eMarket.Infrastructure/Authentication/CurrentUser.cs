@@ -1,49 +1,56 @@
-using System.Security.Claims;
 using eMarket.Application.Common.Interfaces;
+using eMarket.Domain.Businesses;
+using eMarket.Domain.Businesses.ValueObjects;
 using eMarket.Domain.Identity;
 using Microsoft.AspNetCore.Http;
+using System.Security.Claims;
 
-namespace eMarket.Infrastructure.Authentication;
+namespace eMarket.Api.Common.Authentication;
 
 public sealed class CurrentUser : ICurrentUser
 {
     private readonly IHttpContextAccessor _httpContextAccessor;
 
-    public CurrentUser(IHttpContextAccessor httpContextAccessor)
+    public CurrentUser(
+        IHttpContextAccessor httpContextAccessor)
     {
         _httpContextAccessor = httpContextAccessor;
     }
 
+    private ClaimsPrincipal? User =>
+        _httpContextAccessor.HttpContext?.User;
+
     public bool IsAuthenticated =>
-        _httpContextAccessor.HttpContext?.User.Identity?.IsAuthenticated ?? false;
+        User?.Identity?.IsAuthenticated == true;
 
-    public string? Email =>
-        _httpContextAccessor.HttpContext?
-            .User
-            .FindFirst(ClaimTypes.Email)?.Value;
-
-    public UserId UserId
+    public UserId? UserId
     {
         get
         {
-#if DEBUG
-            var id = _httpContextAccessor.HttpContext?
-                .User
-                .FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var value = User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-            return string.IsNullOrWhiteSpace(id)
-                ? UserId.Create(Guid.Empty)
-                : UserId.Create(Guid.Parse(id));
-#else
-        var id = _httpContextAccessor.HttpContext?
-            .User
-            .FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!Guid.TryParse(value, out var id))
+                return null;
 
-        if (string.IsNullOrWhiteSpace(id))
-            throw new UnauthorizedAccessException();
-
-        return UserId.Create(Guid.Parse(id));
-#endif
+            return UserId.Create(id);
         }
+    }
+
+    public BusinessId? BusinessId
+    {
+        get
+        {
+            var value = User?.FindFirst("businessId")?.Value;
+
+            if (!Guid.TryParse(value, out var id))
+                return null;
+
+            return BusinessId.Create(id);
+        }
+    }
+
+    public bool IsInRole(string role)
+    {
+        return User?.IsInRole(role) == true;
     }
 }

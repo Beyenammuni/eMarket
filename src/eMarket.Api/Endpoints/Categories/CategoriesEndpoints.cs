@@ -22,8 +22,7 @@ public static class CategoriesEndpoints
         group.MapGet("/{id:guid}", GetCategoryById);
         group.MapGet("/", GetCategories);
         group.MapPut("/{id:guid}", UpdateCategory);
-        group.MapPatch(
-    "/{id:guid}/deactivate", DeactivateCategory);
+        group.MapPatch("/{id:guid}/deactivate", DeactivateCategory);
         group.MapPatch("/{id:guid}/Activate",ActivateCategory);
 
         return app;

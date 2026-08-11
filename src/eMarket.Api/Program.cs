@@ -1,5 +1,6 @@
-using eMarket.Api.Endpoints;
 using eMarket.Api.Endpoints.Businesses;
+using eMarket.Api.Endpoints.Categories;
+using eMarket.Api.Endpoints.Products;
 using eMarket.Infrastructure.Identity;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -22,7 +23,8 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 //app.UseAuthentication();
 //app.UseAuthorization();
-app.MapEndpoints();
+app.MapCategoryEndpoints();
+app.MapProductEndpoints();
 app.MapBusinessEndpoints();
 
 app.Run();

@@ -1,7 +1,8 @@
+using eMarket.Api.Common.Authentication;
 using eMarket.Application.Behaviors;
 using eMarket.Application.Catalog.Categories.Commands.CreateCategory;
 using eMarket.Application.Common.Interfaces;
-using eMarket.Infrastructure.Authentication;
+using eMarket.Application.Common.IRepositories;
 using eMarket.Infrastructure.Messaging;
 using eMarket.Infrastructure.Persistence;
 using eMarket.Infrastructure.Persistence.Interceptors;
@@ -41,10 +42,11 @@ namespace eMarket.Infrastructure.Identity
             services.AddHttpContextAccessor();
             services.AddScoped<ICurrentUser, CurrentUser>();
             services.AddScoped<IBusinessDbContext>(sp =>
-    sp.GetRequiredService<AppDbContext>());
+            sp.GetRequiredService<AppDbContext>());
 
             services.AddScoped<ICatalogDbContext>(sp =>
                 sp.GetRequiredService<AppDbContext>());
+            services.AddScoped<IProductRepository, ProductRepository>();
 
             services.AddScoped<IIdentityDbContext>(sp =>
                 sp.GetRequiredService<AppDbContext>());

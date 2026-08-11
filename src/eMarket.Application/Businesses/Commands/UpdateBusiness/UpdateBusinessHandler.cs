@@ -1,21 +1,20 @@
 using eMarket.Application.Common.Interfaces;
 using eMarket.Domain.Businesses;
 using eMarket.Domain.Businesses.ValueObjects;
-using eMarket.Domain.Identity;
 using eMarket.SharedKernel.Common;
 using eMarket.SharedKernel.Results;
 using EMarket.SharedKernel.Common;
 using MediatR;
 
-namespace eMarket.Application.Businesses.Commands.AddBusinessMember;
+namespace eMarket.Application.Businesses.Commands.UpdateBusiness;
 
-internal sealed class AddBusinessMemberHandler
-    : IRequestHandler<AddBusinessMemberCommand, Result<AddBusinessMemberResponse>>
+internal sealed class UpdateBusinessHandler
+    : IRequestHandler<UpdateBusinessCommand, Result<UpdateBusinessResponse>>
 {
     private readonly IBusinessRepository _repository;
     private readonly IUnitOfWork _unitOfWork;
 
-    public AddBusinessMemberHandler(
+    public UpdateBusinessHandler(
         IBusinessRepository repository,
         IUnitOfWork unitOfWork)
     {
@@ -23,8 +22,8 @@ internal sealed class AddBusinessMemberHandler
         _unitOfWork = unitOfWork;
     }
 
-    public async Task<Result<AddBusinessMemberResponse>> Handle(
-        AddBusinessMemberCommand request,
+    public async Task<Result<UpdateBusinessResponse>> Handle(
+        UpdateBusinessCommand request,
         CancellationToken cancellationToken)
     {
         var business = await _repository.GetByIdAsync(
@@ -33,27 +32,25 @@ internal sealed class AddBusinessMemberHandler
 
         if (business is null)
         {
-            return Result<AddBusinessMemberResponse>.Failure(
+            return Result<UpdateBusinessResponse>.Failure(
                 BusinessErrors.NotFound);
         }
 
-        var role = Enumeration.FromValue<BusinessRole>(request.Role);
-
-        var result = business.AddMember(
-            UserId.Create(request.UserId),
-            role);
+        var result = business.Update(
+            BusinessName.Create(request.Name),
+            Enumeration.FromValue<BusinessType>(request.Type));
 
         if (result.IsFailure)
         {
-            return Result<AddBusinessMemberResponse>.Failure(result.Error);
+            return Result<UpdateBusinessResponse>.Failure(result.Error);
         }
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return Result<AddBusinessMemberResponse>.Success(
-            new AddBusinessMemberResponse(
+        return Result<UpdateBusinessResponse>.Success(
+            new UpdateBusinessResponse(
                 business.Id.Value,
-                request.UserId,
-                role.Name));
+                business.Name.Value,
+                business.Type.Name));
     }
 }

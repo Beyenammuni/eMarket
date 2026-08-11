@@ -8,6 +8,34 @@ public static class ProductErrors
         new(
             "Product.Name.Same",
             "Product already has this name.");
+    public static readonly Error AlreadyDeleted =
+    new(
+        "Product.AlreadyDeleted",
+        "Product is already deleted.");
+    public static readonly Error BusinessRequired =
+    new(
+        "Product.BusinessRequired",
+        "Business is Required");
+    public static readonly Error Unauthorized=
+        new(
+        "Product.Unauthorized",
+        "Product was unauthrized");
+
+    public static readonly Error ProductAlreadyExists =
+        new(
+            "Product.AlreadyExists",
+            "A product with the same name already exists in this business.");
+
+    public static readonly Error NotFound =
+        new(
+            "Product.NotFound",
+            "Product was not found.");
+
+    public static readonly Error CategoryNotFound =
+        new(
+            "Product.Category.NotFound",
+            "Category was not found.");
+
     public static readonly Error ProductPriceMustBePositive =
         new(
             "Product.Price.Positive",
@@ -31,5 +59,5 @@ public static class ProductErrors
     public static readonly Error InvalidStock =
         new(
             "Product.Stock.Invalid",
-            "Stock cannot be negative.");
+            "Stock quantity is invalid.");
 }

@@ -1,3 +1,4 @@
+using eMarket.Domain.Businesses;
 using eMarket.Domain.Catalog.Categories;
 using eMarket.Domain.Catalog.Products;
 using eMarket.Domain.Catalog.Products.Events;
@@ -21,17 +22,25 @@ public class ProductTests
         var categoryId = CategoryId.New();
 
         // Act
+        var businessId = BusinessId.New();
+
         var result = Product.Create(
+            businessId,
+            categoryId,
             name,
             description,
             price,
             sku,
-            categoryId);
+            null);
 
         // Assert
+
         result.IsSuccess.Should().BeTrue();
 
         var product = result.Value;
+        product.BusinessId.Should().Be(businessId);
+
+        product.ImageUrl.Should().BeNull();
 
         product.Name.Should().Be(name);
         product.Description.Should().Be(description);
@@ -96,19 +105,67 @@ public class ProductTests
     {
         var product = CreateProduct();
 
-        var result = product.AddStock(10);
+        var result = product.IncreaseStock(10);
 
         result.IsSuccess.Should().BeTrue();
 
         product.StockQuantity.Should().Be(10);
     }
+    [Fact]
+    public void ChangeImage_Should_Update_Image()
+    {
+        var product = CreateProduct();
 
+        var result = product.ChangeImage(
+            "https://cdn.test.com/image.png");
+
+        result.IsSuccess.Should().BeTrue();
+
+        product.ImageUrl.Should()
+            .Be("https://cdn.test.com/image.png");
+
+        product.UpdatedAt.Should().NotBeNull();
+    }
+    //[Fact]
+    //public void ChangeImage_Should_Raise_DomainEvent()
+    //{
+    //    var product = CreateProduct();
+
+    //    product.ClearDomainEvents();
+
+    //    product.ChangeImage("image.png");
+
+    //    product.DomainEvents
+    //        .Should()
+    //        .ContainSingle(x =>
+    //            x is ProductImageChangedDomainEvent);
+    //}
+    [Fact]
+    public void Create_Should_Set_BusinessId()
+    {
+        var businessId = BusinessId.New();
+
+        var result = Product.Create(
+            businessId,
+            CategoryId.New(),
+            ProductName.Create("iPhone"),
+            ProductDescription.Create("Phone"),
+            Money.Create(1000, Currency.USD),
+            Sku.Create("IPHONE"),
+            null);
+
+        result.IsSuccess.Should().BeTrue();
+
+        result.Value.BusinessId
+            .Should()
+            .Be(businessId);
+    }
     [Fact]
     public void AddStock_Should_Fail_When_Quantity_Is_Invalid()
     {
         var product = CreateProduct();
 
-        var result = product.AddStock(0);
+        var result = product.IncreaseStock(0);
 
         result.IsFailure.Should().BeTrue();
 
@@ -120,9 +177,9 @@ public class ProductTests
     {
         var product = CreateProduct();
 
-        product.AddStock(10);
+        product.IncreaseStock(10);
 
-        var result = product.RemoveStock(4);
+        var result = product.DecreaseStock(4);
 
         result.IsSuccess.Should().BeTrue();
 
@@ -134,7 +191,7 @@ public class ProductTests
     {
         var product = CreateProduct();
 
-        var result = product.RemoveStock(5);
+        var result = product.DecreaseStock(5);
 
         result.IsFailure.Should().BeTrue();
 
@@ -237,7 +294,7 @@ public class ProductTests
 
         product.ClearDomainEvents();
 
-        product.AddStock(5);
+        product.IncreaseStock(5);
 
         product.DomainEvents
             .Should()
@@ -249,10 +306,10 @@ public class ProductTests
     {
         var product = CreateProduct();
 
-        product.AddStock(10);
+        product.IncreaseStock(10);
         product.ClearDomainEvents();
 
-        product.RemoveStock(5);
+        product.DecreaseStock(5);
 
         product.DomainEvents
             .Should()
@@ -288,14 +345,16 @@ public class ProductTests
             .ContainSingle(x => x is ProductDeactivatedDomainEvent);
     }
 
-    private static Product CreateProduct()
+    private static Product? CreateProduct()
     {
         return Product.Create(
+            BusinessId.New(),
+            CategoryId.New(),
             ProductName.Create("iPhone 16"),
             ProductDescription.Create("Apple smartphone"),
             Money.Create(1000m, Currency.USD),
             Sku.Create("IPHONE-16"),
-            CategoryId.New())
+            null)
             .Value;
     }
 }

@@ -13,6 +13,7 @@ public static class BusinessEndpoints
         app.MapChangeMemberRoleEndpoint();
         app.MapRemoveMemberEndpoint();
         app.MapTransferOwnershipEndpoint();
+        app.MapUpdateBusinessEndpoint();
 
         // Queries
         app.MapGetBusinessByIdEndpoint();

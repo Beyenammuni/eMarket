@@ -1,3 +1,4 @@
+using eMarket.Domain.Businesses;
 using eMarket.Domain.Catalog.Categories;
 using eMarket.Domain.Catalog.Products;
 using eMarket.Domain.Catalog.Products.ValueObjects;
@@ -43,6 +44,8 @@ public sealed class ProductConfiguration
                 .HasColumnName("Currency")
                 .HasMaxLength(3);
         });
+        builder.HasQueryFilter(
+          x => !x.IsDeleted);
 
         builder.Property(x => x.Sku)
             .HasConversion(
@@ -60,13 +63,25 @@ public sealed class ProductConfiguration
 
         builder.Property(x => x.Status)
             .HasConversion<int>();
+        builder.Property(x => x.BusinessId)
+    .HasConversion(
+        id => id.Value,
+        value => BusinessId.Create(value));
 
+        builder.HasIndex(x => new
+        {
+            x.BusinessId,
+            x.Name
+        });
+        builder.HasIndex(x => x.CategoryId);
+
+        builder.HasIndex(x => x.Status);
         builder.HasOne<Category>()
     .WithMany()
     .HasForeignKey(x => x.CategoryId)
     .OnDelete(DeleteBehavior.Restrict);
 
-        builder.Property(x => x.StockQuantity);
+        builder.Property(x => x.StockQuantity).HasDefaultValue(0);
 
         builder.Property(x => x.CreatedAt);
 

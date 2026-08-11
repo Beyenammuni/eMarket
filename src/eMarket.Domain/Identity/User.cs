@@ -1,4 +1,3 @@
-using eMarket.Domain.Identity.Errors;
 using eMarket.Domain.Identity.Events;
 using eMarket.Domain.Identity.ValueObjects;
 using eMarket.SharedKernel.Common;

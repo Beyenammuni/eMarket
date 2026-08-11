@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace eMarket.Domain.Identity.Errors
+namespace eMarket.Domain.Identity
 {
 
     public static class UserErrors
