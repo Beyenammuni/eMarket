@@ -83,6 +83,10 @@ public sealed class ProductConfiguration
 
         builder.Property(x => x.StockQuantity).HasDefaultValue(0);
 
+        builder.Property(x => x.RowVersion)
+            .IsRowVersion()
+            .IsConcurrencyToken();
+
         builder.Property(x => x.CreatedAt);
 
         builder.Ignore(x => x.DomainEvents);

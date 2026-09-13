@@ -4,4 +4,4 @@ public sealed record ChangeMemberRoleResponse
     (
     Guid BusinessId,
     Guid UserId,
-    string Role);
+    int Role);

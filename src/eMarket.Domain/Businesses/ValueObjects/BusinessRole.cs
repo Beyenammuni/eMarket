@@ -1,5 +1,5 @@
 using eMarket.SharedKernel.Common;
-using EMarket.SharedKernel.Common;
+using eMarket.SharedKernel.Common;
 
 namespace eMarket.Domain.Businesses.ValueObjects;
 
@@ -30,4 +30,14 @@ public sealed class BusinessRole : Enumeration
         : base(id, name)
     {
     }
+    public static IEnumerable<BusinessRole> List =>
+[
+        Owner,
+        Manager,
+        Cashier,
+        InventoryManager,
+        DeliveryManager,
+        Accountant,
+        Employee
+];
 }

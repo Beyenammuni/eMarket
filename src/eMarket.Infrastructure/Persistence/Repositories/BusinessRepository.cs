@@ -1,5 +1,7 @@
 using eMarket.Application.Common.Interfaces;
+using eMarket.Application.Common.IRepositories;
 using eMarket.Domain.Businesses;
+using eMarket.Domain.Businesses.Entities;
 using eMarket.Domain.Businesses.ValueObjects;
 using eMarket.Domain.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -85,6 +87,32 @@ public sealed class BusinessRepository : IBusinessRepository
             .Include(x => x.Members)
             .FirstOrDefaultAsync(
                 x => x.Id == id,
+                cancellationToken);
+    }
+    public async Task<bool> IsMemberAsync(
+    BusinessId businessId,
+    UserId userId,
+    CancellationToken cancellationToken = default)
+    {
+        return await _context.BusinessMembers
+            .AnyAsync(
+                x =>
+                    x.BusinessId == businessId &&
+                    x.UserId == userId &&
+                    x.IsActive,
+                cancellationToken);
+    }
+    public async Task<BusinessMember?> GetMemberAsync(
+    BusinessId businessId,
+    UserId userId,
+    CancellationToken cancellationToken = default)
+    {
+        return await _context.BusinessMembers
+            .FirstOrDefaultAsync(
+                x =>
+                    x.BusinessId == businessId &&
+                    x.UserId == userId &&
+                    x.IsActive,
                 cancellationToken);
     }
 

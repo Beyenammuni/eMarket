@@ -2,9 +2,11 @@ using eMarket.Domain.Businesses.ValueObjects;
 using eMarket.SharedKernel.Common;
 using eMarket.SharedKernel.Rules;
 
+using IBusinessRuleAlias = eMarket.SharedKernel.Common.IBusinessRule;
+
 namespace eMarket.Domain.Businesses.Rules;
 
-public sealed class BusinessCannotHaveSameNameRule : IBusinessRule
+public sealed class BusinessCannotHaveSameNameRule : IBusinessRuleAlias
 {
     private readonly BusinessName _current;
     private readonly BusinessName _newName;

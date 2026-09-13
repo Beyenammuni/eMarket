@@ -11,20 +11,25 @@ public sealed class CartItem
     }
 
     internal CartItem(
+        CartId cartId,
         ProductId productId,
         Money unitPrice,
         Quantity quantity)
     {
+        CartId = cartId;
         ProductId = productId;
         UnitPrice = unitPrice;
         Quantity = quantity;
     }
+
+    public CartId CartId { get; private set; } = default!;
 
     public ProductId ProductId { get; private set; } = default!;
 
     public Money UnitPrice { get; private set; } = default!;
 
     public Quantity Quantity { get; private set; } = default!;
+
     public decimal TotalPrice =>
         UnitPrice.Amount * Quantity.Value;
 

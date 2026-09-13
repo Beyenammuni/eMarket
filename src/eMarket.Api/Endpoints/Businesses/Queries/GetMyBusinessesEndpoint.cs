@@ -1,5 +1,8 @@
+using eMarket.Api.Common;
 using eMarket.Application.Businesses.Queries.GetMyBusinesses;
 using MediatR;
+using eMarket.Api.Common.Authorization;
+using eMarket.Application.Common.Authorization;
 
 namespace eMarket.Api.Endpoints.Businesses.Queries;
 
@@ -13,18 +16,20 @@ public static class GetMyBusinessesEndpoint
                 ISender sender,
                 CancellationToken cancellationToken) =>
             {
-                var result = await sender.Send(
+
+                var result = 
+                await sender.Send(
                     new GetMyBusinessesQuery(),
                     cancellationToken);
 
                 if (result.IsFailure)
-                    return Results.BadRequest(result.Error);
+                    return ApiResults.Failure(result.Error);
 
                 return Results.Ok(result.Value);
             })
             .WithName("GetMyBusinesses")
-            .WithTags("Businesses");
-            //.RequireAuthorization();
+            .WithTags("Businesses")
+            .RequireAuthorization();
 
         return app;
     }

@@ -2,6 +2,7 @@ using MediatR;
 using eMarket.Application.Common.Interfaces;
 using eMarket.SharedKernel.Results;
 using eMarket.Domain.Catalog.Categories;
+using eMarket.Application.Common.IRepositories;
 
 namespace eMarket.Application.Catalog.Categories.Queries.GetCategoryById;
 

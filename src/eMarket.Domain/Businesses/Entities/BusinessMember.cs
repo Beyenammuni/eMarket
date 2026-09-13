@@ -1,32 +1,33 @@
 using eMarket.Domain.Businesses.ValueObjects;
 using eMarket.Domain.Identity;
-using eMarket.SharedKernel.Common;
 using eMarket.SharedKernel.Results;
 
 namespace eMarket.Domain.Businesses.Entities;
 
-public sealed class BusinessMember : Entity<BusinessMemberId>
+public sealed class BusinessMember
 {
     private BusinessMember()
     {
     }
 
-    internal BusinessMember(
-        BusinessMemberId id,
-        UserId userId,
+    public BusinessMember(
         BusinessId businessId,
+        UserId userId,
         BusinessRole role)
     {
-        Id = id;
-        UserId = userId;
+        Id = BusinessMemberId.New();
         BusinessId = businessId;
+        UserId = userId;
         Role = role;
-        JoinedAt = DateTime.UtcNow;
         IsActive = true;
+        JoinedAt = DateTime.UtcNow;
     }
 
-    public UserId UserId { get; private set; } = default!;
+    public BusinessMemberId Id { get; private set; } = default!;
+
     public BusinessId BusinessId { get; private set; } = default!;
+
+    public UserId UserId { get; private set; } = default!;
 
     public BusinessRole Role { get; private set; } = default!;
 
@@ -34,12 +35,31 @@ public sealed class BusinessMember : Entity<BusinessMemberId>
 
     public DateTime JoinedAt { get; private set; }
 
-    internal void ChangeRole(BusinessRole role)
+    public Result ChangeRole(BusinessRole newRole)
     {
-        Role = role;
+        if (Role == newRole)
+        {
+            return Result.Success();
+        }
+
+        Role = newRole;
+
+        return Result.Success();
     }
 
-    internal Result Deactivate()
+    public Result Activate()
+    {
+        if (IsActive)
+        {
+            return Result.Success();
+        }
+
+        IsActive = true;
+
+        return Result.Success();
+    }
+
+    public Result Deactivate()
     {
         if (!IsActive)
         {
@@ -50,9 +70,4 @@ public sealed class BusinessMember : Entity<BusinessMemberId>
 
         return Result.Success();
     }
-    internal void Activate()
-    {
-        IsActive = true;
-    }
-
 }

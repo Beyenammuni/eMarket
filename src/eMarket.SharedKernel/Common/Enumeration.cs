@@ -1,6 +1,6 @@
 using System.Reflection;
 
-namespace EMarket.SharedKernel.Common;
+namespace eMarket.SharedKernel.Common;
 
 public abstract class Enumeration : IComparable
 {

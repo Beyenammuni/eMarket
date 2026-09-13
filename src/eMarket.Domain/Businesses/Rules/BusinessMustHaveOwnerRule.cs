@@ -1,7 +1,6 @@
 using eMarket.Domain.Businesses.Entities;
 using eMarket.Domain.Businesses.ValueObjects;
-using eMarket.SharedKernel.Common;
-using eMarket.SharedKernel.Rules;
+using IBusinessRule = eMarket.SharedKernel.Rules.IBusinessRule; 
 
 namespace eMarket.Domain.Businesses.Rules;
 

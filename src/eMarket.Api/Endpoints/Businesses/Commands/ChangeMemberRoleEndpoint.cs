@@ -1,5 +1,8 @@
+using eMarket.Api.Common;
 using eMarket.Application.Businesses.Commands.ChangeMemberRole;
 using MediatR;
+using eMarket.Api.Common.Authorization;
+using eMarket.Application.Common.Authorization;
 
 namespace eMarket.Api.Endpoints.Businesses.Commands;
 
@@ -25,13 +28,13 @@ public static class ChangeMemberRoleEndpoint
                 var result = await sender.Send(command, cancellationToken);
 
                 if (result.IsFailure)
-                    return Results.BadRequest(result.Error);
+                    return ApiResults.Failure(result.Error);
 
                 return Results.Ok(result.Value);
             })
             .WithName("ChangeMemberRole")
-            .WithTags("Businesses");
-            //.RequireAuthorization();
+            .WithTags("Businesses")
+             .RequireBusinessPermission(Permissions.Business.ManageRoles);
 
         return app;
     }

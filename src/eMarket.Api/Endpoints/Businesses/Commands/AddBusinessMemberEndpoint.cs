@@ -1,5 +1,8 @@
+using eMarket.Api.Common;
 using eMarket.Application.Businesses.Commands.AddBusinessMember;
 using MediatR;
+using eMarket.Api.Common.Authorization;
+using eMarket.Application.Common.Authorization;
 
 namespace eMarket.Api.Endpoints.Businesses;
 
@@ -24,13 +27,13 @@ public static class AddBusinessMemberEndpoint
                 var result = await sender.Send(command, cancellationToken);
 
                 if (result.IsFailure)
-                    return Results.BadRequest(result.Error);
+                    return ApiResults.Failure(result.Error);
 
                 return Results.Ok(result.Value);
             })
             .WithName("AddBusinessMember")
-            .WithTags("Businesses");
-            //.RequireAuthorization();
+            .WithTags("Businesses")
+             .RequireBusinessPermission(Permissions.Business.ManageMembers);
 
         return app;
     }

@@ -4,11 +4,17 @@
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
     <PackageReference Include="MediatR" Version="14.2.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Identity.Core" Version="10.0.2" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\eMarket.Domain\eMarket.Domain.csproj" />
     <ProjectReference Include="..\eMarket.SharedKernel\eMarket.SharedKernel.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Identity\Auth\Queries\" />
+    <Folder Include="Sales\Payments\Queries\" />
   </ItemGroup>
 
   <PropertyGroup>

@@ -58,13 +58,12 @@ public sealed class Business : AggregateRoot<BusinessId>
         return Result<Business>.Success(business);
     }
 
-    private void AddInitialOwner(UserId ownerId)
+    private void AddInitialOwner(UserId userId)
     {
         _members.Add(
             new BusinessMember(
-                BusinessMemberId.New(),
-                ownerId,
                 Id,
+                userId,
                 BusinessRole.Owner));
     }
     public Result Activate()
@@ -119,9 +118,8 @@ public sealed class Business : AggregateRoot<BusinessId>
         }
 
         var member = new BusinessMember(
-            BusinessMemberId.New(),
-            userId,
             Id,
+            userId,
             role);
 
         _members.Add(member);

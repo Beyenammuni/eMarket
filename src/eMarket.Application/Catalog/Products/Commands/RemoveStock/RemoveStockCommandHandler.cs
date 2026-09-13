@@ -1,3 +1,4 @@
+using eMarket.Application.Common.Authorization;
 using eMarket.Application.Common.Interfaces;
 using eMarket.Application.Common.IRepositories;
 using eMarket.Domain.Catalog.Products;
@@ -12,29 +13,24 @@ internal sealed class RemoveStockCommandHandler
     private readonly IProductRepository _productRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUser _currentUser;
+    private readonly IBusinessAuthorization _authorization;
 
     public RemoveStockCommandHandler(
         IProductRepository productRepository,
         IUnitOfWork unitOfWork,
-        ICurrentUser currentUser)
+        ICurrentUser currentUser,
+        IBusinessAuthorization authorization)
     {
         _productRepository = productRepository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
+        _authorization = authorization;
     }
 
     public async Task<Result> Handle(
         RemoveStockCommand request,
         CancellationToken cancellationToken)
     {
-        // 1. Check authentication
-        if (!_currentUser.IsAuthenticated)
-        {
-            return Result.Failure(
-                ProductErrors.Unauthorized);
-        }
-
-        // 2. Get current Business
         var businessId = _currentUser.BusinessId;
 
         if (businessId is null)
@@ -43,11 +39,23 @@ internal sealed class RemoveStockCommandHandler
                 ProductErrors.BusinessRequired);
         }
 
-        // 3. Get product owned by current Business
-        var product = await _productRepository.GetByIdAsync(
-            ProductId.Create(request.Id),
-            businessId,
-            cancellationToken);
+        var authorized =
+            await _authorization.HasPermissionAsync(
+                businessId,
+                Permissions.Products.ManageStock,
+                cancellationToken);
+
+        if (!authorized)
+        {
+            return Result.Failure(
+                ProductErrors.Forbidden);
+        }
+
+        var product =
+            await _productRepository.GetByIdAsync(
+                ProductId.Create(request.Id),
+                businessId,
+                cancellationToken);
 
         if (product is null)
         {
@@ -55,16 +63,14 @@ internal sealed class RemoveStockCommandHandler
                 ProductErrors.NotFound);
         }
 
-        // 4. Remove stock
-        var result = product.DecreaseStock(
-            request.Quantity);
+        var result =
+            product.DecreaseStock(request.Quantity);
 
         if (result.IsFailure)
         {
             return result;
         }
 
-        // 5. Save changes
         await _unitOfWork.SaveChangesAsync(
             cancellationToken);
 

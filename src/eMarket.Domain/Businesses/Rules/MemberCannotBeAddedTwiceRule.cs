@@ -1,6 +1,5 @@
 using eMarket.Domain.Businesses.Entities;
 using eMarket.Domain.Identity;
-using eMarket.SharedKernel.Common;
 using eMarket.SharedKernel.Rules;
 
 namespace eMarket.Domain.Businesses.Rules;

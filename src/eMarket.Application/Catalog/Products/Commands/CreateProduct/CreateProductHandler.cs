@@ -1,10 +1,13 @@
+using eMarket.Application.Common.Authorization;
 using eMarket.Application.Common.Interfaces;
 using eMarket.Application.Common.IRepositories;
+using eMarket.Domain.Businesses;
 using eMarket.Domain.Catalog.Categories;
 using eMarket.Domain.Catalog.Products;
 using eMarket.Domain.Catalog.Products.ValueObjects;
 using eMarket.SharedKernel.Results;
 using MediatR;
+using static eMarket.Application.Common.Authorization.Permissions;
 
 namespace eMarket.Application.Catalog.Products.Commands.CreateProduct;
 
@@ -14,34 +17,26 @@ internal sealed class CreateProductCommandHandler
         Result<CreateProductResponse>>
 {
     private readonly IProductRepository _productRepository;
-    private readonly ICategoryRepository _categoryRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUser _currentUser;
+    private readonly IBusinessAuthorization _authorization;
 
     public CreateProductCommandHandler(
         IProductRepository productRepository,
-        ICategoryRepository categoryRepository,
         IUnitOfWork unitOfWork,
-        ICurrentUser currentUser)
+        ICurrentUser currentUser,
+        IBusinessAuthorization authorization)
     {
         _productRepository = productRepository;
-        _categoryRepository = categoryRepository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
+        _authorization = authorization;
     }
 
     public async Task<Result<CreateProductResponse>> Handle(
         CreateProductCommand request,
         CancellationToken cancellationToken)
     {
-        // 1. Check authentication
-        if (!_currentUser.IsAuthenticated)
-        {
-            return Result<CreateProductResponse>.Failure(
-                ProductErrors.Unauthorized);
-        }
-
-        // 2. Get current Business
         var businessId = _currentUser.BusinessId;
 
         if (businessId is null)
@@ -50,68 +45,78 @@ internal sealed class CreateProductCommandHandler
                 ProductErrors.BusinessRequired);
         }
 
-        // 3. Check Category
-        var category = await _categoryRepository.GetByIdAsync(
-            CategoryId.Create(request.CategoryId),
-            cancellationToken);
+        var authorized =
+            await _authorization.HasPermissionAsync(
+                businessId,
+                Permissions.Products.Create,
+                cancellationToken);
 
-        if (category is null)
+        if (!authorized)
         {
             return Result<CreateProductResponse>.Failure(
-                ProductErrors.CategoryNotFound);
+                ProductErrors.Forbidden);
         }
 
-        // 4. Check duplicate Product
-        var productName = ProductName.Create(request.Name);
+        var categoryId =
+            CategoryId.Create(request.CategoryId);
+
+        var name =
+            ProductName.Create(request.Name);
+
+        var description =
+            ProductDescription.Create(request.Description);
+
+        var price =
+            Money.Create(request.Price, default);
+
+        var sku =
+            Sku.Create(request.Sku);
 
         var exists = await _productRepository.ExistsAsync(
             businessId,
-            productName,
+            name,
             null,
             cancellationToken);
 
         if (exists)
         {
             return Result<CreateProductResponse>.Failure(
-                ProductErrors.ProductAlreadyExists);
+                ProductErrors.AlreadyExists);
         }
 
-        // 5. Create Product
-        var result = Product.Create(
+        var productResult = Product.Create(
             businessId,
-            CategoryId.Create(request.CategoryId),
-            productName,
-            ProductDescription.Create(request.Description),
-            Money.Create(
-                request.Price,
-                request.Currency),
-            Sku.Create(request.Sku),
+            categoryId,
+            name,
+            description,
+            price,
+            sku,
             request.ImageUrl);
 
-        if (result.IsFailure)
+        if (productResult.IsFailure)
         {
             return Result<CreateProductResponse>.Failure(
-                result.Error);
+                productResult.Error);
         }
 
-        // 6. Add Product
+        var product = productResult.Value;
+
         await _productRepository.AddAsync(
-            result.Value,
+            product,
             cancellationToken);
 
-        // 7. Save changes
         await _unitOfWork.SaveChangesAsync(
             cancellationToken);
 
-        // 8. Return response
         return Result<CreateProductResponse>.Success(
-    new CreateProductResponse(
-        result.Value.Id.Value,
-        result.Value.Name.Value,
-        result.Value.Description.Value,
-        result.Value.Price.Amount,
-        result.Value.Price.Currency,
-        result.Value.Sku.Value,
-        result.Value.ImageUrl));
+            new CreateProductResponse(
+                product.Id.Value,
+                product.Name.Value,
+                product.Description.Value,
+                product.Price.Amount,
+                product.Price.Currency,
+                product.Sku.Value,
+                product.ImageUrl.ToString()
+                ));
     }
 }

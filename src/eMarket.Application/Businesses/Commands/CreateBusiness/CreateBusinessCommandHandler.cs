@@ -1,8 +1,9 @@
 using eMarket.Application.Common.Interfaces;
+using eMarket.Application.Common.IRepositories;
 using eMarket.Domain.Businesses;
 using eMarket.Domain.Businesses.ValueObjects;
 using eMarket.SharedKernel.Results;
-using EMarket.SharedKernel.Common;
+using eMarket.SharedKernel.Common;
 using MediatR;
 
 namespace eMarket.Application.Businesses.Commands.CreateBusiness;

@@ -2,7 +2,7 @@ using eMarket.Domain.Businesses;
 using eMarket.Domain.Catalog.Categories;
 using eMarket.Domain.Catalog.Categories.ValueObjects;
 
-namespace eMarket.Application.Common.Interfaces;
+namespace eMarket.Application.Common.IRepositories;
 
 public interface ICategoryRepository
 {

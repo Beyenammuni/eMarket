@@ -3,6 +3,7 @@ using eMarket.Application.Common.Interfaces;
 using eMarket.Domain.Catalog.Categories;
 using eMarket.Domain.Catalog.Categories.ValueObjects;
 using eMarket.SharedKernel.Results;
+using eMarket.Application.Common.IRepositories;
 
 namespace eMarket.Application.Catalog.Categories.Commands.UpdateCategory;
 

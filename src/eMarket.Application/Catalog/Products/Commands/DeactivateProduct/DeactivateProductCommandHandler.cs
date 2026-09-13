@@ -1,3 +1,4 @@
+using eMarket.Application.Common.Authorization;
 using eMarket.Application.Common.Interfaces;
 using eMarket.Application.Common.IRepositories;
 using eMarket.Domain.Catalog.Products;
@@ -12,29 +13,24 @@ internal sealed class DeactivateProductCommandHandler
     private readonly IProductRepository _productRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUser _currentUser;
+    private readonly IBusinessAuthorization _authorization;
 
     public DeactivateProductCommandHandler(
         IProductRepository productRepository,
         IUnitOfWork unitOfWork,
-        ICurrentUser currentUser)
+        ICurrentUser currentUser,
+        IBusinessAuthorization authorization)
     {
         _productRepository = productRepository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
+        _authorization = authorization;
     }
 
     public async Task<Result> Handle(
         DeactivateProductCommand request,
         CancellationToken cancellationToken)
     {
-        // 1. Check authentication
-        if (!_currentUser.IsAuthenticated)
-        {
-            return Result.Failure(
-                ProductErrors.Unauthorized);
-        }
-
-        // 2. Get current Business
         var businessId = _currentUser.BusinessId;
 
         if (businessId is null)
@@ -43,11 +39,23 @@ internal sealed class DeactivateProductCommandHandler
                 ProductErrors.BusinessRequired);
         }
 
-        // 3. Get product owned by current Business
-        var product = await _productRepository.GetByIdAsync(
-            ProductId.Create(request.Id),
-            businessId,
-            cancellationToken);
+        var authorized =
+            await _authorization.HasPermissionAsync(
+                businessId,
+                Permissions.Products.Activate,
+                cancellationToken);
+
+        if (!authorized)
+        {
+            return Result.Failure(
+                ProductErrors.Forbidden);
+        }
+
+        var product =
+            await _productRepository.GetByIdAsync(
+                ProductId.Create(request.Id),
+                businessId,
+                cancellationToken);
 
         if (product is null)
         {
@@ -55,7 +63,6 @@ internal sealed class DeactivateProductCommandHandler
                 ProductErrors.NotFound);
         }
 
-        // 4. Deactivate product
         var result = product.Deactivate();
 
         if (result.IsFailure)
@@ -63,7 +70,6 @@ internal sealed class DeactivateProductCommandHandler
             return result;
         }
 
-        // 5. Save changes
         await _unitOfWork.SaveChangesAsync(
             cancellationToken);
 

@@ -74,9 +74,7 @@ public static class ProductEndpoints
     CancellationToken cancellationToken)
     {
         var result = await sender.Send(
-            new AddStockCommand(
-                id,
-                request.Quantity),
+            new AddStockCommand(id, businessId.Value, request.Quantity),
             cancellationToken);
 
         if (result.IsFailure)
@@ -92,9 +90,7 @@ public static class ProductEndpoints
     CancellationToken cancellationToken)
     {
         var result = await sender.Send(
-            new RemoveStockCommand(
-                id,
-                request.Quantity),
+            new RemoveStockCommand(id, businessId.Value, request.Quantity),
             cancellationToken);
 
         if (result.IsFailure)
@@ -190,3 +186,5 @@ public static class ProductEndpoints
         return Results.NoContent();
     }
 }
+
+

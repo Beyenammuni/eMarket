@@ -1,5 +1,7 @@
+using eMarket.Api.Common;
 using eMarket.Application.Businesses.Commands.CreateBusiness;
 using MediatR;
+using eMarket.SharedKernel.Constants;
 
 namespace eMarket.Api.Endpoints.Businesses.Commands;
 
@@ -18,7 +20,7 @@ public static class CreateBusinessEndpoint
 
                 if (result.IsFailure)
                 {
-                    return Results.BadRequest(result.Error);
+                    return ApiResults.Failure(result.Error);
                 }
 
                 return Results.Created(
@@ -26,7 +28,8 @@ public static class CreateBusinessEndpoint
                     result.Value);
             })
             .WithName("CreateBusiness")
-            .WithTags("Businesses");
+            .WithTags("Businesses")
+            .RequireAuthorization(policy => policy.RequireRole(Roles.Seller, Roles.Admin, Roles.SuperAdmin));
         return app;
     }
 }

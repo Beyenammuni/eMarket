@@ -1,0 +1,13 @@
+using FluentValidation;
+
+namespace eMarket.Application.Sales.Orders.Queries.GetOrderById;
+
+public sealed class GetOrderByIdQueryValidator
+    : AbstractValidator<GetOrderByIdQuery>
+{
+    public GetOrderByIdQueryValidator()
+    {
+        RuleFor(x => x.Id)
+            .NotEmpty();
+    }
+}

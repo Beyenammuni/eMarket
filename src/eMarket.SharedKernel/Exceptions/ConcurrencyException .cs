@@ -1,4 +1,4 @@
-namespace EMarket.SharedKernel.Exceptions;
+namespace eMarket.SharedKernel.Exceptions;
 
 public sealed class ConcurrencyException : Exception
 {

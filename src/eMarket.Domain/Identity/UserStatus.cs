@@ -1,4 +1,4 @@
-using EMarket.SharedKernel.Common;
+using eMarket.SharedKernel.Common;
 using System;
 using System.Collections.Generic;
 using System.Text;

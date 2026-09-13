@@ -1,4 +1,4 @@
-namespace EMarket.SharedKernel.Pagination;
+namespace eMarket.SharedKernel.Pagination;
 
 public sealed class PagedResult<T>
 {

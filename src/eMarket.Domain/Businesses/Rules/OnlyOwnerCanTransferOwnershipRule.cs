@@ -1,10 +1,10 @@
 using eMarket.Domain.Businesses.ValueObjects;
 using eMarket.SharedKernel.Common;
-using eMarket.SharedKernel.Rules;
+using RulesIBR = eMarket.SharedKernel.Rules.IBusinessRule;
 
 namespace eMarket.Domain.Businesses.Rules;
 
-public sealed class OnlyOwnerCanTransferOwnershipRule : IBusinessRule
+public sealed class OnlyOwnerCanTransferOwnershipRule : RulesIBR
 {
     private readonly BusinessRole _role;
 

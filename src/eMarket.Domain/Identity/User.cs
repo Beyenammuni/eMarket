@@ -8,25 +8,26 @@ namespace eMarket.Domain.Identity;
 public sealed class User : AggregateRoot<UserId>
 {
     private readonly List<UserRole> _roles = [];
-
-    // 1. Constructor الخاص بـ EF Core
     private User()
     {
     }
 
-    // 2. Constructor الحقيقي
+    // 2. Constructor 
     private User(
         UserId id,
         FullName fullName,
         Email email,
-        PhoneNumber phoneNumber)
+        PhoneNumber phoneNumber,
+        string username)
     {
         Id = id;
         FullName = fullName;
         Email = email;
         PhoneNumber = phoneNumber;
+        Username = username.Trim().ToLowerInvariant();
 
-        Status = UserStatus.Pending;
+        Status = UserStatus.Active;
+        // A newly registered user should not have their email verified by default.
         EmailVerified = false;
         CreatedAt = DateTime.UtcNow;
     }
@@ -35,6 +36,7 @@ public sealed class User : AggregateRoot<UserId>
     public FullName FullName { get; private set; } = default!;
     public Email Email { get; private set; } = default!;
     public PhoneNumber PhoneNumber { get; private set; } = default!;
+    public string Username { get; private set; } = default!;
     public UserStatus Status { get; private set; } = default!;
     public bool EmailVerified { get; private set; }
     public DateTime CreatedAt { get; private set; }
@@ -46,9 +48,10 @@ public sealed class User : AggregateRoot<UserId>
     public static Result<User> Register(
         FullName fullName,
         Email email,
-        PhoneNumber phoneNumber)
+        PhoneNumber phoneNumber,
+        string username)
     {
-        var user = new User(UserId.New(), fullName, email, phoneNumber);
+        var user = new User(UserId.New(), fullName, email, phoneNumber, username);
 
         var roleResult = user.AssignRole(UserRole.Customer);
 
@@ -61,6 +64,17 @@ public sealed class User : AggregateRoot<UserId>
 
         return Result<User>.Success(user);
     }
+    // Backwards-compatible overload for existing domain tests/consumers.
+    public static Result<User> Register(
+        FullName fullName,
+        Email email,
+        PhoneNumber phoneNumber)
+        => Register(
+            fullName,
+            email,
+            phoneNumber,
+            email.Value.Split('@')[0]);
+
     public Result AssignRole(UserRole role)
     {
         if (_roles.Contains(role))
@@ -74,14 +88,14 @@ public sealed class User : AggregateRoot<UserId>
 
         return Result.Success();
     }
-    public Result RemoveRole(UserRole role)
+    public Result RemoveRole(UserRole role, bool allowRemovingLast = false)
     {
         if (!_roles.Contains(role))
         {
             return Result.Success();
         }
 
-        if (_roles.Count == 1)
+        if (_roles.Count == 1 && !allowRemovingLast)
         {
             return Result.Failure(UserErrors.LastRoleCannotBeRemoved);
         }

@@ -1,9 +1,11 @@
+using eMarket.Application.Common.Authorization;
 using eMarket.Application.Common.Interfaces;
+using eMarket.Application.Common.IRepositories;
 using eMarket.Domain.Businesses;
 using eMarket.Domain.Businesses.ValueObjects;
 using eMarket.SharedKernel.Common;
 using eMarket.SharedKernel.Results;
-using EMarket.SharedKernel.Common;
+using eMarket.SharedKernel.Common;
 using MediatR;
 
 namespace eMarket.Application.Businesses.Commands.UpdateBusiness;
@@ -13,19 +15,39 @@ internal sealed class UpdateBusinessHandler
 {
     private readonly IBusinessRepository _repository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IBusinessAuthorization _authorization;
+
+
 
     public UpdateBusinessHandler(
         IBusinessRepository repository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IBusinessAuthorization authorization)
     {
         _repository = repository;
         _unitOfWork = unitOfWork;
+        _authorization = authorization;
     }
 
     public async Task<Result<UpdateBusinessResponse>> Handle(
         UpdateBusinessCommand request,
         CancellationToken cancellationToken)
     {
+        var businessId =
+    BusinessId.Create(request.BusinessId);
+
+        var hasPermission =
+            await _authorization.HasPermissionAsync(
+                businessId,
+                Permissions.Business.Update,
+                cancellationToken);
+
+        if (!hasPermission)
+        {
+            return Result<UpdateBusinessResponse>.Failure(
+                BusinessErrors.Forbidden);
+        }
+
         var business = await _repository.GetByIdAsync(
             BusinessId.Create(request.BusinessId),
             cancellationToken);

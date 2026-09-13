@@ -1,4 +1,4 @@
-using eMarket.Application.Common.Interfaces;
+using eMarket.Application.Common.IRepositories;
 using eMarket.Domain.Catalog.Categories;
 using eMarket.Domain.Catalog.Categories.ValueObjects;
 using eMarket.Infrastructure.Persistence;

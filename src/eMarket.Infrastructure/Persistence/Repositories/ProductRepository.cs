@@ -90,29 +90,40 @@ public sealed class ProductRepository : IProductRepository
             .AsNoTracking()
             .AsQueryable();
 
+        // Business isolation
         if (businessId is not null)
         {
             query = query.Where(
                 x => x.BusinessId == businessId);
         }
 
+        // Category filtering
         if (categoryId is not null)
         {
             query = query.Where(
                 x => x.CategoryId == categoryId);
         }
 
+        // SQL-based search.
+        // Name and Sku are Value Objects mapped to nvarchar through
+        // EF Core ValueConverters.
+        //
+        // The cast exposes the provider type (string) to EF Core,
+        // avoiding unsupported member access such as x.Name.Value.
         if (!string.IsNullOrWhiteSpace(search))
         {
+            search = search.Trim();
+
             query = query.Where(
-                x => x.Name.Value.Contains(search) ||
-                     x.Sku.Value.Contains(search));
+                x =>
+                    ((string)(object)x.Name).Contains(search) ||
+                    ((string)(object)x.Sku).Contains(search));
         }
 
         var totalCount = await query.CountAsync(
             cancellationToken);
 
-        query = sortBy?.ToLower() switch
+        query = sortBy?.Trim().ToLowerInvariant() switch
         {
             "price" => sortDescending
                 ? query.OrderByDescending(x => x.Price.Amount)
@@ -122,7 +133,9 @@ public sealed class ProductRepository : IProductRepository
                 ? query.OrderByDescending(x => x.CreatedAt)
                 : query.OrderBy(x => x.CreatedAt),
 
-            _ => query.OrderBy(x => x.Id)
+            _ => sortDescending
+                ? query.OrderByDescending(x => x.Id)
+                : query.OrderBy(x => x.Id)
         };
 
         var items = await query

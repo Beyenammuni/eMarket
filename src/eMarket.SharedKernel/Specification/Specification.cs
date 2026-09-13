@@ -1,6 +1,6 @@
 using System.Linq.Expressions;
 
-namespace EMarket.SharedKernel.Specifications;
+namespace eMarket.SharedKernel.Specifications;
 
 public abstract class Specification<T> : ISpecification<T>
 {

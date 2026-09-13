@@ -59,6 +59,9 @@ public sealed class Product : AggregateRoot<ProductId>
     public DateTime CreatedAt { get; private set; }
 
     public DateTime? UpdatedAt { get; private set; }
+
+    public byte[] RowVersion { get; private set; } = [];
+
     public bool IsDeleted { get; private set; }
 
     public static Result<Product> Create(

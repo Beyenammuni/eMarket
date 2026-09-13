@@ -1,4 +1,4 @@
-using EMarket.SharedKernel.Common;
+using eMarket.SharedKernel.Common;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace eMarket.Infrastructure.Persistence.Converters;

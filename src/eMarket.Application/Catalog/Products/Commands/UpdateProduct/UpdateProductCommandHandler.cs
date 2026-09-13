@@ -1,8 +1,9 @@
+using eMarket.Application.Common.Authorization;
 using eMarket.Application.Common.Interfaces;
 using eMarket.Application.Common.IRepositories;
-using eMarket.Domain.Catalog.Categories;
 using eMarket.Domain.Catalog.Products;
 using eMarket.Domain.Catalog.Products.ValueObjects;
+using eMarket.Domain.Catalog.Categories;
 using eMarket.SharedKernel.Results;
 using MediatR;
 
@@ -14,26 +15,51 @@ internal sealed class UpdateProductCommandHandler
         Result<UpdateProductResponse>>
 {
     private readonly IProductRepository _productRepository;
-    private readonly ICategoryRepository _categoryRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ICurrentUser _currentUser;
+    private readonly IBusinessAuthorization _authorization;
 
     public UpdateProductCommandHandler(
         IProductRepository productRepository,
-        ICategoryRepository categoryRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        ICurrentUser currentUser,
+        IBusinessAuthorization authorization)
     {
         _productRepository = productRepository;
-        _categoryRepository = categoryRepository;
         _unitOfWork = unitOfWork;
+        _currentUser = currentUser;
+        _authorization = authorization;
     }
 
     public async Task<Result<UpdateProductResponse>> Handle(
         UpdateProductCommand request,
         CancellationToken cancellationToken)
     {
-        var product = await _productRepository.GetByIdAsync(
-            ProductId.Create(request.Id),
-            cancellationToken);
+        var businessId = _currentUser.BusinessId;
+
+        if (businessId is null)
+        {
+            return Result<UpdateProductResponse>.Failure(
+                ProductErrors.BusinessRequired);
+        }
+
+        var authorized =
+            await _authorization.HasPermissionAsync(
+                businessId,
+                Permissions.Products.Update,
+                cancellationToken);
+
+        if (!authorized)
+        {
+            return Result<UpdateProductResponse>.Failure(
+                ProductErrors.Forbidden);
+        }
+
+        var product =
+            await _productRepository.GetByIdAsync(
+                ProductId.Create(request.Id),
+                businessId,
+                cancellationToken);
 
         if (product is null)
         {
@@ -41,77 +67,23 @@ internal sealed class UpdateProductCommandHandler
                 ProductErrors.NotFound);
         }
 
-        var category = await _categoryRepository.GetByIdAsync(
-            CategoryId.Create(request.CategoryId),
-            cancellationToken);
+        product.Rename(
+            ProductName.Create(request.Name));
 
-        if (category is null)
-        {
-            return Result<UpdateProductResponse>.Failure(
-                ProductErrors.CategoryNotFound);
-        }
+        product.ChangeDescription(
+            ProductDescription.Create(request.Description));
 
-        var name = ProductName.Create(request.Name);
-        var description =
-            ProductDescription.Create(request.Description);
+        product.ChangePrice(
+            Money.Create(request.Price, default));
 
-        var price = Money.Create(
-            request.Price,
-            request.Currency);
-
-        var sku = Sku.Create(request.Sku);
-
-        var result = product.Rename(name);
-
-        if (result.IsFailure)
-        {
-            return Result<UpdateProductResponse>.Failure(
-                result.Error);
-        }
-
-        result = product.ChangeDescription(description);
-
-        if (result.IsFailure)
-        {
-            return Result<UpdateProductResponse>.Failure(
-                result.Error);
-        }
-
-        result = product.ChangePrice(price);
-
-        if (result.IsFailure)
-        {
-            return Result<UpdateProductResponse>.Failure(
-                result.Error);
-        }
-
-        result = product.ChangeSku(sku);
-
-        if (result.IsFailure)
-        {
-            return Result<UpdateProductResponse>.Failure(
-                result.Error);
-        }
-
-        result = product.ChangeCategory(
+        product.ChangeCategory(
             CategoryId.Create(request.CategoryId));
 
-        if (result.IsFailure)
-        {
-            return Result<UpdateProductResponse>.Failure(
-                result.Error);
-        }
+        product.ChangeSku(
+            Sku.Create(request.Sku));
 
-        if (request.ImageUrl != product.ImageUrl)
-        {
-            result = product.ChangeImage(request.ImageUrl);
-
-            if (result.IsFailure)
-            {
-                return Result<UpdateProductResponse>.Failure(
-                    result.Error);
-            }
-        }
+        product.ChangeImage(
+            request.ImageUrl);
 
         await _unitOfWork.SaveChangesAsync(
             cancellationToken);
@@ -124,7 +96,7 @@ internal sealed class UpdateProductCommandHandler
                 product.Price.Amount,
                 product.Price.Currency,
                 product.Sku.Value,
-                product.CategoryId.Value,
-                product.ImageUrl));
+                product.CategoryId,
+                product.ImageUrl.ToString()));
     }
 }

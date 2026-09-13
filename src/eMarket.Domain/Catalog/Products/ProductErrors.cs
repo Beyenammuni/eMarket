@@ -8,6 +8,10 @@ public static class ProductErrors
         new(
             "Product.Name.Same",
             "Product already has this name.");
+
+    public static readonly Error Forbidden = new(
+    "Product.Forbidden",
+    "You do not have permission to perform this action.");
     public static readonly Error AlreadyDeleted =
     new(
         "Product.AlreadyDeleted",
@@ -16,12 +20,18 @@ public static class ProductErrors
     new(
         "Product.BusinessRequired",
         "Business is Required");
-    public static readonly Error Unauthorized=
-        new(
-        "Product.Unauthorized",
-        "Product was unauthrized");
+    public static readonly Error ProductNotAvailable =
+    new(
+        "Product.NotAvailable",
+        "Product is not available.");
 
-    public static readonly Error ProductAlreadyExists =
+    public static readonly Error InsufficientStock =
+        new(
+            "Product.Stock.Insufficient",
+            "There is not enough stock available.");
+
+
+    public static readonly Error AlreadyExists =
         new(
             "Product.AlreadyExists",
             "A product with the same name already exists in this business.");
@@ -60,4 +70,10 @@ public static class ProductErrors
         new(
             "Product.Stock.Invalid",
             "Stock quantity is invalid.");
+    public static readonly Error BusinessAccessDenied = new(
+    "Product.BusinessAccessDenied",
+    "You do not have access to this business.");
+    public static readonly Error Unauthorized = new(
+    "Product.Unauthorized",
+    "You must be authenticated.");
 }

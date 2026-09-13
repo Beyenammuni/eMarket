@@ -14,6 +14,6 @@ public sealed class ChangeMemberRoleValidator
             .NotEmpty();
 
         RuleFor(x => x.Role)
-            .InclusiveBetween(1, 4);
+            .InclusiveBetween(1, 7);
     }
 }

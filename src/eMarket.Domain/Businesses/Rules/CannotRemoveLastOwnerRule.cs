@@ -1,12 +1,11 @@
 using eMarket.Domain.Businesses.Entities;
 using eMarket.Domain.Businesses.ValueObjects;
 using eMarket.Domain.Identity;
-using eMarket.SharedKernel.Common;
 using eMarket.SharedKernel.Rules;
 
 namespace eMarket.Domain.Businesses.Rules;
 
-public sealed class CannotRemoveLastOwnerRule : IBusinessRule
+public sealed class CannotRemoveLastOwnerRule : eMarket.SharedKernel.Rules.IBusinessRule
 {
     private readonly IEnumerable<BusinessMember> _members;
     private readonly UserId _userId;
