@@ -1,0 +1,13 @@
+.git
+.github
+.vs
+.vscode
+.idea
+**/bin
+**/obj
+TestResults
+*.user
+*.suo
+*.zip
+*.mdf
+*.ldf

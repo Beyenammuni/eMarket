@@ -1,60 +1,25 @@
 # eMarket
 
-A modern AI-powered grocery marketplace built with ASP.NET Core, Clean Architecture, DDD, CQRS, and React.
+Production-oriented multi-vendor grocery marketplace backend built with **.NET 10**, Clean Architecture, DDD, CQRS, MediatR, EF Core and SQL Server.
 
-## Vision
+## Included
 
-eMarket is a multi-vendor grocery marketplace that connects customers, stores, and delivery partners through one intelligent platform.
+- JWT authentication and persistent roles
+- Business/store management and business-level authorization
+- Product catalog and inventory
+- Customer cart and orders
+- Payment abstraction with development-only mock gateway
+- Weekly subscription engine
+- Admin dashboard API
+- SQL Server persistence and EF migrations
+- Concurrency protection for inventory/orders/subscriptions
+- Global exception handling and ProblemDetails
+- Rate limiting, CORS, security headers and health checks
+- Docker image for reverse-proxy platforms such as Coolify
+- CI build, tests, dependency vulnerability audit and container build
 
-Our mission is to simplify grocery shopping using subscriptions, AI recommendations, and real-time delivery.
+## Production gate
 
-## Features
+The API intentionally refuses to start in Production when the payment provider is still `Mock` or when production payment settings are missing. A real provider with signed webhook verification, idempotency and refunds must be connected before accepting real payments.
 
-- Multi Vendor Marketplace
-- Subscription Shopping
-- Weekly Grocery Plans
-- AI Recommendations
-- Loyalty & Rewards
-- Real-time Order Tracking
-- Multi-language
-- Multi-currency
-- Clean Architecture
-- Domain Driven Design
-- CQRS
-- Event Driven Architecture
-
-## Tech Stack
-
-### Backend
-
-- ASP.NET Core 10
-- Entity Framework Core
-- SQL Server
-- MediatR
-- FluentValidation
-- Redis
-- SignalR
-- Hangfire
-
-### Frontend
-
-- React
-- TypeScript
-- TailwindCSS
-
-### Infrastructure
-
-- Docker
-- GitHub Actions
-- Azure
-- Kubernetes
-
-## Solution Structure
-
-src/
-tests/
-docs/
-
-## License
-
-MIT
+See `PRODUCTION_READINESS.md` for deployment, secrets, database migration and marketplace authorization requirements.

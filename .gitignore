@@ -486,3 +486,12 @@ $RECYCLE.BIN/
 
 .vs/
 TestResults/
+
+# Local copies - never commit
+/src-BACKUP/
+/eMarket/
+# Local comparison artifacts
+compare-report.txt
+compare-source-only.txt
+git-files.txt
+missing-from-src.txt

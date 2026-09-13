@@ -1,34 +1,39 @@
-name: Continuous Integration
+name: CI
 
 on:
   push:
-    branches:
-      - main
-      - develop
-
+    branches: [ main, develop ]
   pull_request:
-    branches:
-      - main
-      - develop
+    branches: [ main, develop ]
+
+permissions:
+  contents: read
 
 jobs:
-  build:
+  build-test:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup .NET SDK
+      - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
 
-      - name: Restore Dependencies
+      - name: Restore
         run: dotnet restore eMarket.slnx
 
-      - name: Build Solution
-        run: dotnet build eMarket.slnx --configuration Release --no-restore
+      - name: Vulnerability audit
+        run: dotnet list eMarket.slnx package --vulnerable --include-transitive
 
-      - name: Run Tests
+      - name: Build
+        run: dotnet build eMarket.slnx --configuration Release --no-restore --warnaserror
+
+      - name: Test
         run: dotnet test eMarket.slnx --configuration Release --no-build --verbosity normal
+
+      - name: Build production container
+        run: docker build --pull -t emarket-api:ci .

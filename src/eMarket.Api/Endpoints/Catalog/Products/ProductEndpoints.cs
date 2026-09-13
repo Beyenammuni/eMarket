@@ -109,39 +109,41 @@ public static class ProductEndpoints
     }
 
     private static async Task<IResult> AddStock(
-        Guid id,
-        [FromBody] StockRequest request,
-        [FromServices] ISender sender,
-        CancellationToken cancellationToken)
+    Guid id,
+    BusinessId businessId,
+    StockRequest request,
+    ISender sender,
+    CancellationToken cancellationToken)
     {
         var result = await sender.Send(
             new AddStockCommand(
                 id,
-                request.BusinessId,
+                businessId.Value,
                 request.Quantity),
             cancellationToken);
 
         if (result.IsFailure)
-            return ApiResults.Failure(result.Error);
+            return Results.BadRequest(result.Error);
 
         return Results.NoContent();
     }
 
     private static async Task<IResult> RemoveStock(
         Guid id,
-        [FromBody] StockRequest request,
-        [FromServices] ISender sender,
+        BusinessId businessId,
+        StockRequest request,
+        ISender sender,
         CancellationToken cancellationToken)
     {
         var result = await sender.Send(
             new RemoveStockCommand(
                 id,
-                request.BusinessId,
+                businessId.Value,
                 request.Quantity),
             cancellationToken);
 
         if (result.IsFailure)
-            return ApiResults.Failure(result.Error);
+            return Results.BadRequest(result.Error);
 
         return Results.NoContent();
     }

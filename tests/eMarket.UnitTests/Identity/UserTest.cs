@@ -15,9 +15,11 @@ public class UserTests
         var fullName = FullName.Create("Bayan", "Amounh");
         var email = Email.Create("bayan@test.com");
         var phone = PhoneNumber.Create("+905551112233");
+        var username = "bayanamounh";
+
 
         // Act
-        var result = User.Register(fullName, email, phone);
+        var result = User.Register(fullName, email, phone, username);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -27,8 +29,9 @@ public class UserTests
         user.FullName.Should().Be(fullName);
         user.Email.Should().Be(email);
         user.PhoneNumber.Should().Be(phone);
+        user.Username.Should().Be(username);
 
-        user.Status.Should().Be(UserStatus.Pending);
+        user.Status.Should().Be(UserStatus.Active);
 
         user.EmailVerified.Should().BeFalse();
 
@@ -266,23 +269,7 @@ public class UserTests
             .Should()
             .ContainSingle(e => e is UserEmailChangedDomainEvent);
     }
-    [Fact]
-    public void Activate_Should_Raise_UserActivatedDomainEvent()
-    {
-        var user = User.Register(
-            FullName.Create("Bayan", "Amounh"),
-            Email.Create("bayan@test.com"),
-            PhoneNumber.Create("+905551112233"))
-            .Value;
-
-        user.ClearDomainEvents();
-
-        user.Activate();
-
-        user.DomainEvents
-            .Should()
-            .ContainSingle(e => e is UserActivatedDomainEvent);
-    }
+  
     [Fact]
     public void Suspend_Should_Raise_UserSuspendedDomainEvent()
     {
