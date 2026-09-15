@@ -1,4 +1,3 @@
-using eMarket.Application.Common.Models;
 using eMarket.SharedKernel.Pagination;
 
 namespace eMarket.Infrastructure.Persistence.Extensions;
