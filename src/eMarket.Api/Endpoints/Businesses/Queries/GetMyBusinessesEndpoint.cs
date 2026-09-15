@@ -1,0 +1,36 @@
+using eMarket.Api.Common;
+using eMarket.Application.Businesses.Queries.GetMyBusinesses;
+using MediatR;
+using eMarket.Api.Common.Authorization;
+using eMarket.Application.Common.Authorization;
+
+namespace eMarket.Api.Endpoints.Businesses.Queries;
+
+public static class GetMyBusinessesEndpoint
+{
+    public static IEndpointRouteBuilder MapGetMyBusinessesEndpoint(
+        this IEndpointRouteBuilder app)
+    {
+        app.MapGet("/api/businesses/my",
+            async (
+                ISender sender,
+                CancellationToken cancellationToken) =>
+            {
+
+                var result = 
+                await sender.Send(
+                    new GetMyBusinessesQuery(),
+                    cancellationToken);
+
+                if (result.IsFailure)
+                    return ApiResults.Failure(result.Error);
+
+                return Results.Ok(result.Value);
+            })
+            .WithName("GetMyBusinesses")
+            .WithTags("Businesses")
+            .RequireAuthorization();
+
+        return app;
+    }
+}
