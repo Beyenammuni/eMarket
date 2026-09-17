@@ -5,7 +5,6 @@ using eMarket.Application.Identity.Auth.Commands.Login;
 using eMarket.Application.Identity.Auth.Commands.Register;
 using eMarket.Application.Identity.Auth.Commands.ResetPassword;
 using MediatR;
-using Microsoft.AspNetCore.RateLimiting;
 
 namespace eMarket.Api.Endpoints.Identity;
 

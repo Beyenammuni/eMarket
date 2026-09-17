@@ -1,23 +1,24 @@
-using System.Threading.RateLimiting;
+using eMarket.Api.Common;
 using eMarket.Api.Common.Business;
 using eMarket.Api.Endpoints.Admin;
+using eMarket.Api.Endpoints.Auth;
 using eMarket.Api.Endpoints.Catalog.Categories;
 using eMarket.Api.Endpoints.Catalog.Products;
 using eMarket.Api.Endpoints.Identity;
 using eMarket.Api.Endpoints.Orders;
 using eMarket.Api.Endpoints.Payments;
 using eMarket.Api.Endpoints.Sales.Carts;
+using eMarket.Api.Endpoints.Seller;
 using eMarket.Api.Endpoints.Subscriptions;
+using eMarket.Application.Catalog.Categories.Commands.UpdateCategory;
+using eMarket.Infrastructure.Health;
 using eMarket.Infrastructure.Identity;
 using eMarket.SharedKernel.Exceptions;
-using eMarket.Api.Common;
-using eMarket.Infrastructure.Health;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.OpenApi;
-using eMarket.Application.Catalog.Categories.Commands.UpdateCategory;
-using eMarket.Api.Endpoints.Seller;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -183,6 +184,7 @@ app.MapSubscriptionEndpoints();
 app.MapAdminEndpoints();
 app.MapApproveBusinessEndpoint();
 app.MapCloseBusinessEndpoint();
+app.MapUserEndpoints();
 using (var scope = app.Services.CreateScope())
 {
     var seeder = scope.ServiceProvider
