@@ -2,8 +2,10 @@ using eMarket.Application.Common.Interfaces;
 using eMarket.Application.Common.IRepositories;
 using eMarket.Domain.Payments;
 using eMarket.Domain.Sales.Orders;
+using eMarket.Domain.Subscriptions;
 using eMarket.SharedKernel.Results;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 
 namespace eMarket.Application.Sales.Payments.Commands.ProcessPaymentWebhook;
 
@@ -12,15 +14,18 @@ internal sealed class ProcessPaymentWebhookCommandHandler
 {
     private readonly IPaymentRepository _paymentRepository;
     private readonly IOrderRepository _orderRepository;
+    private readonly ISubscriptionDbContext _subscriptionContext;
     private readonly IUnitOfWork _unitOfWork;
 
     public ProcessPaymentWebhookCommandHandler(
         IPaymentRepository paymentRepository,
         IOrderRepository orderRepository,
+        ISubscriptionDbContext subscriptionContext,
         IUnitOfWork unitOfWork)
     {
         _paymentRepository = paymentRepository;
         _orderRepository = orderRepository;
+        _subscriptionContext = subscriptionContext;
         _unitOfWork = unitOfWork;
     }
 
@@ -58,20 +63,47 @@ internal sealed class ProcessPaymentWebhookCommandHandler
         if (paymentResult.IsFailure)
             return paymentResult;
 
-        var order = await _orderRepository.GetByIdAsync(
-            OrderId.Create(payment.OrderId),
-            cancellationToken);
-
-        if (order is null)
+        // Order payment
+        if (payment.OrderId is not null)
         {
-            return Result.Failure(
-                OrderErrors.NotFound);
+            var order = await _orderRepository.GetByIdAsync(
+                OrderId.Create(payment.OrderId.Value),
+                cancellationToken);
+
+            if (order is null)
+            {
+                return Result.Failure(
+                    OrderErrors.NotFound);
+            }
+
+            var orderResult = order.MarkAsPaid();
+
+            if (orderResult.IsFailure)
+                return orderResult;
         }
 
-        var orderResult = order.MarkAsPaid();
+        // Subscription payment
+        if (payment.SubscriptionId is not null)
+        {
+            var subscription = await _subscriptionContext.Subscriptions
+                .FirstOrDefaultAsync(
+                    x => x.Id == SubscriptionId.Create(
+                        payment.SubscriptionId.Value),
+                    cancellationToken);
 
-        if (orderResult.IsFailure)
-            return orderResult;
+            if (subscription is null)
+            {
+                return Result.Failure(
+                    SubscriptionErrors.NotFound);
+            }
+
+            var activateResult = subscription.Activate();
+
+            if (activateResult.IsFailure)
+            {
+                return activateResult;
+            }
+        }
 
         await _unitOfWork.SaveChangesAsync(
             cancellationToken);

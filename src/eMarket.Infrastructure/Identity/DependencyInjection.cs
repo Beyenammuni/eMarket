@@ -141,6 +141,9 @@ public static class DependencyInjection
         services.AddScoped<IPaymentGateway,
             IyzicoPaymentGateway>();
 
+        services.AddScoped<ISubscriptionPaymentGateway,
+            IyzicoSubscriptionGateway>();
+
         if (string.Equals(
                 Environment.GetEnvironmentVariable(
                     "ASPNETCORE_ENVIRONMENT"),

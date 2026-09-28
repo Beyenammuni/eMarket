@@ -21,4 +21,7 @@ public interface IBusinessAuthorization
         BusinessId businessId,
         string permission,
         CancellationToken cancellationToken = default);
+    Task<bool> HasPermissionOnAnyBusinessAsync(
+    string permission,
+    CancellationToken cancellationToken = default);
 }

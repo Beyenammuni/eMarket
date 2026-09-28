@@ -1,4 +1,4 @@
-using eMarket.Application.Catalog.Categories.Commands.DeactivateCategory;
+using eMarket.Application.Catalog.Categories.Commands.DeactiveCategory;
 using FluentValidation;
 
 namespace eMarket.Application.Catalog.Categories.Commands.ActivateCategory;

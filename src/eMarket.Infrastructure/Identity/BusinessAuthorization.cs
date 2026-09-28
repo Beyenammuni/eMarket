@@ -69,8 +69,31 @@ public sealed class BusinessAuthorization : IBusinessAuthorization
                      x.UserId == userId &&
                      x.IsActive,
                 cancellationToken);
-
+        Console.WriteLine(
+    $"BusinessId: {businessId}, UserId: {userId}, MemberRole: {member?.Role?.Name}"); 
         return member is not null &&
                BusinessRolePermissions.HasPermission(member.Role, permission);
+    }
+    public async Task<bool> HasPermissionOnAnyBusinessAsync(
+    string permission,
+    CancellationToken cancellationToken = default)
+    {
+        var userId = _currentUser.UserId;
+
+        if (userId is null)
+            return false;
+
+        var businessRoles = await _context.BusinessMembers
+            .AsNoTracking()
+            .Where(x =>
+                x.UserId == userId &&
+                x.IsActive)
+            .Select(x => x.Role)
+            .ToListAsync(cancellationToken);
+
+        return businessRoles.Any(role =>
+            BusinessRolePermissions.HasPermission(
+                role,
+                permission));
     }
 }

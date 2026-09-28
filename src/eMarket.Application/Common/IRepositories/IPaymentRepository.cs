@@ -15,4 +15,7 @@ public interface IPaymentRepository
     Task AddAsync(
         Payment payment,
         CancellationToken cancellationToken = default);
+    Task<Payment?> GetBySubscriptionIdAsync(
+    Guid subscriptionId,
+    CancellationToken cancellationToken = default);
 }

@@ -55,4 +55,15 @@ public sealed class OrderRepository : IOrderRepository
             .OrderByDescending(x => x.CreatedAt)
             .ToListAsync(cancellationToken);
     }
+    public async Task<List<Order>> GetByBusinessIdAsync(
+    Guid businessId,
+    CancellationToken cancellationToken = default)
+    {
+        return await _context.Orders
+            .AsNoTracking()
+            .Include(x => x.Items)
+            .Where(x => x.BusinessId == businessId)
+            .OrderByDescending(x => x.CreatedAt)
+            .ToListAsync(cancellationToken);
+    }
 }

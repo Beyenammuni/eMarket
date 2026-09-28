@@ -6,5 +6,8 @@ using System.Text;
 
 namespace eMarket.Application.Catalog.Categories.Commands.CreateCategory
 {
-    public sealed record CreateCategoryCommand(string Name) : IRequest<Result<CreateCategoryResponse>>;
+    public sealed record CreateCategoryCommand(
+        string Name,
+        Guid? ParentCategoryId
+    ) : IRequest<Result<CreateCategoryResponse>>;
 }

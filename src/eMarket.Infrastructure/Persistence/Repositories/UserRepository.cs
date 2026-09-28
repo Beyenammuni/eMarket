@@ -22,4 +22,11 @@ public sealed class UserRepository : IUserRepository
                 x => x.Id == id,
                 cancellationToken);
     }
+    public async Task<List<User>> ListAsync(
+        CancellationToken cancellationToken = default)
+    {
+        return await _context.Users
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+    }
 }

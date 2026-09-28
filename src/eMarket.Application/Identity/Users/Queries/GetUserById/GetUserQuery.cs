@@ -1,7 +1,7 @@
 using eMarket.SharedKernel.Results;
 using MediatR;
 
-namespace eMarket.Application.Identity.Users.Queries.GetUser;
+namespace eMarket.Application.Identity.Users.Queries.GetUserById;
 
 public sealed record GetUserQuery(
     Guid UserId

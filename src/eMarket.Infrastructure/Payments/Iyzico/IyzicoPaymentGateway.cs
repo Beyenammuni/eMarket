@@ -61,7 +61,11 @@ internal sealed class IyzicoPaymentGateway : IPaymentGateway
                     CultureInfo.InvariantCulture),
 
                 Currency = request.Currency,
-                BasketId = request.OrderId.ToString(),
+                BasketId = (
+    request.OrderId ??
+    request.SubscriptionId ??
+    request.PaymentId
+).ToString(),
                 PaymentGroup = PaymentGroup.PRODUCT.ToString(),
                 CallbackUrl = request.ReturnUrl,
 

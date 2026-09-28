@@ -19,17 +19,19 @@ internal sealed class GenerateSubscriptionOrderCommandHandler
     private readonly ICatalogDbContext _catalog;
     private readonly IOrderRepository _orders;
     private readonly IUnitOfWork _uow;
-
+    private readonly IBusinessRepository _businessRepository;
     public GenerateSubscriptionOrderCommandHandler(
         ISubscriptionDbContext context,
         ICatalogDbContext catalog,
         IOrderRepository orders,
-        IUnitOfWork uow)
+        IUnitOfWork uow,
+        IBusinessRepository businessRepository)
     {
         _context = context;
         _catalog = catalog;
         _orders = orders;
         _uow = uow;
+        _businessRepository = businessRepository;
     }
 
     public async Task<Result<GenerateSubscriptionOrderResponse>> Handle(
@@ -112,12 +114,35 @@ internal sealed class GenerateSubscriptionOrderCommandHandler
         }
 
         var deliveryAddress = addressResult.Value!;
+        var business = await _businessRepository.GetByIdAsync(
+    subscription.BusinessId,
+    cancellationToken);
+
+        if (business is null)
+        {
+            return Result<GenerateSubscriptionOrderResponse>.Failure(
+                new Error(
+                    "Order.BusinessNotFound",
+                    "The business could not be found."));
+        }
+        var subtotal = products.Sum(x =>
+    x.Price.Amount *
+    subscription.Items
+        .First(i => i.ProductId == x.Id)
+        .Quantity);
+
+        var shippingFee =
+            business.FreeShippingThreshold.HasValue &&
+            subtotal >= business.FreeShippingThreshold.Value
+                ? 0m
+                : business.ShippingFee;
 
         // 7. Create Order
         var orderResult = Order.Create(
-            subscription.UserId,
-            subscription.BusinessId,
-            deliveryAddress);
+     subscription.UserId,
+     subscription.BusinessId,
+     deliveryAddress,
+     shippingFee);
 
         if (orderResult.IsFailure)
         {

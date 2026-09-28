@@ -1,13 +1,14 @@
 using eMarket.Api.Common;
+using eMarket.Api.Common.Authorization;
+using eMarket.Application.Common.Authorization;
 using eMarket.Application.Sales.Carts.Commands.AddToCart;
 using eMarket.Application.Sales.Carts.Commands.ClearCart;
 using eMarket.Application.Sales.Carts.Commands.RemoveFromCart;
+using eMarket.Application.Sales.Carts.Commands.UpdateCartItem;
 using eMarket.Application.Sales.Carts.Queries.GetCart;
+using eMarket.SharedKernel.Constants;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
-using eMarket.Api.Common.Authorization;
-using eMarket.Application.Common.Authorization;
-using eMarket.SharedKernel.Constants;
 
 namespace eMarket.Api.Endpoints.Sales.Carts;
 
@@ -18,7 +19,7 @@ public static class CartEndpoints
     {
         var group = app.MapGroup("/api/cart")
             .WithTags("Cart");
-
+        
         group.MapGet(
             "/",
             GetCart)
@@ -39,6 +40,10 @@ public static class CartEndpoints
             ClearCart)
             .RequireRoles(Roles.Customer);
 
+        group.MapPut(
+           "/items/{productId:guid}",
+           UpdateCartItem)
+           .RequireRoles(eMarket.SharedKernel.Constants.Roles.Customer);
         return app;
     }
 
@@ -98,6 +103,27 @@ public static class CartEndpoints
     {
         var result = await sender.Send(
             new ClearCartCommand(),
+            cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return ApiResults.Failure(result.Error);
+        }
+
+        return Results.NoContent();
+    }
+    private static async Task<IResult> UpdateCartItem(
+        Guid productId,
+        [FromBody] UpdateCartItemRequest request,
+        [FromServices] ISender sender,
+        CancellationToken cancellationToken)
+    {
+        var command = new UpdateCartItemCommand(
+            productId,
+            request.Quantity);
+
+        var result = await sender.Send(
+            command,
             cancellationToken);
 
         if (result.IsFailure)

@@ -12,23 +12,35 @@ public sealed class CreateCategoryCommandHandler
 {
     private readonly ICategoryRepository _categoryRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ICurrentUser _currentUser;
 
     public CreateCategoryCommandHandler(
         ICategoryRepository categoryRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        ICurrentUser currentUser)
     {
         _categoryRepository = categoryRepository;
         _unitOfWork = unitOfWork;
+        _currentUser = currentUser;
     }
 
     public async Task<Result<CreateCategoryResponse>> Handle(
-      CreateCategoryCommand request,
-      CancellationToken cancellationToken)
+        CreateCategoryCommand request,
+        CancellationToken cancellationToken)
     {
+        if (_currentUser.BusinessId is null)
+        {
+            return Result<CreateCategoryResponse>.Failure(
+                CategoryErrors.BusinessRequired);
+        }
+
+        var businessId = _currentUser.BusinessId;
+
         var categoryName = CategoryName.Create(request.Name);
 
         var existingCategory = await _categoryRepository.GetByNameAsync(
             categoryName,
+            businessId,
             cancellationToken);
 
         if (existingCategory is not null)
@@ -37,10 +49,20 @@ public sealed class CreateCategoryCommandHandler
                 CategoryErrors.NameAlreadyExists);
         }
 
-        var categoryResult = Category.Create(categoryName);
+        CategoryId? parentCategoryId = request.ParentCategoryId.HasValue
+            ? CategoryId.Create(request.ParentCategoryId.Value)
+            : null;
+
+        var categoryResult = Category.Create(
+            businessId,
+            categoryName,
+            parentCategoryId);
 
         if (categoryResult.IsFailure)
-            return Result<CreateCategoryResponse>.Failure(categoryResult.Error);
+        {
+            return Result<CreateCategoryResponse>.Failure(
+                categoryResult.Error);
+        }
 
         await _categoryRepository.AddAsync(
             categoryResult.Value!,

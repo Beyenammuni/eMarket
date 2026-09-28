@@ -16,6 +16,9 @@ public sealed class CategoryConfiguration
     {
         builder.ToTable("Categories");
 
+        builder.Property(x => x.BusinessId)
+            .IsRequired();
+
         builder.OwnsOne(x => x.Name, name =>
         {
             name.Property(x => x.Value)
@@ -24,6 +27,18 @@ public sealed class CategoryConfiguration
                 .IsRequired();
         });
 
+        builder.Property(x => x.ParentCategoryId)
+            .HasConversion(
+                id => id == null ? (Guid?)null : id.Value,
+                value => value == null
+                    ? null
+                    : CategoryId.Create(value.Value))
+            .IsRequired(false);
+
+        builder.HasOne<Category>()
+            .WithMany()
+            .HasForeignKey(x => x.ParentCategoryId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.Property(x => x.Status)
             .HasConversion<string>()

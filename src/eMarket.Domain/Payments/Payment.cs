@@ -5,24 +5,25 @@ using eMarket.SharedKernel.Results;
 
 namespace eMarket.Domain.Payments;
 
-public sealed class Payment
-: AggregateRoot<PaymentId>
+public sealed class Payment : AggregateRoot<PaymentId>
 {
     private const decimal DefaultPlatformCommissionRate = 10m;
 
-private Payment()
+    private Payment()
     {
     }
 
     private Payment(
         PaymentId id,
-        Guid orderId,
+        Guid? orderId,
         Money amount,
         PaymentMethod method,
-        decimal platformCommissionRate)
+        decimal platformCommissionRate,
+        Guid? subscriptionId = null)
     {
         Id = id;
         OrderId = orderId;
+        SubscriptionId = subscriptionId;
         Amount = amount;
         Method = method;
 
@@ -38,7 +39,9 @@ private Payment()
         CreatedAt = DateTime.UtcNow;
     }
 
-    public Guid OrderId { get; private set; }
+    public Guid? OrderId { get; private set; }
+
+    public Guid? SubscriptionId { get; private set; }
 
     public Money Amount { get; private set; } = default!;
 
@@ -60,20 +63,25 @@ private Payment()
 
     public DateTime? UpdatedAt { get; private set; }
 
+    // Subscription payment
     public static Result<Payment> Create(
-        Guid orderId,
+        Guid? orderId,
+        Guid? subscriptionId,
         Money amount,
         PaymentMethod method)
     {
         return Create(
             orderId,
+            subscriptionId,
             amount,
             method,
             DefaultPlatformCommissionRate);
     }
 
+    // Subscription payment with custom commission
     public static Result<Payment> Create(
-        Guid orderId,
+        Guid? orderId,
+        Guid? subscriptionId,
         Money amount,
         PaymentMethod method,
         decimal platformCommissionRate)
@@ -98,13 +106,29 @@ private Payment()
             orderId,
             amount,
             method,
-            platformCommissionRate);
+            platformCommissionRate,
+            subscriptionId);
 
         payment.AddDomainEvent(
             new PaymentCreatedDomainEvent(
                 payment.Id));
 
         return Result<Payment>.Success(payment);
+    }
+
+    // Existing Order payment overload
+    public static Result<Payment> Create(
+        Guid? orderId,
+        Money amount,
+        PaymentMethod method,
+        decimal platformCommissionRate)
+    {
+        return Create(
+            orderId,
+            null,
+            amount,
+            method,
+            platformCommissionRate);
     }
 
     public Result MarkAsSucceeded(
@@ -124,7 +148,8 @@ private Payment()
         AddDomainEvent(
             new PaymentSucceededDomainEvent(
                 Id,
-                OrderId));
+                OrderId,
+                SubscriptionId));
 
         return Result.Success();
     }
@@ -143,10 +168,9 @@ private Payment()
         AddDomainEvent(
             new PaymentFailedDomainEvent(
                 Id,
-                OrderId));
+                OrderId,
+                SubscriptionId));
 
         return Result.Success();
     }
-
-
 }

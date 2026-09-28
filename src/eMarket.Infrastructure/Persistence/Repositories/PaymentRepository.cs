@@ -43,4 +43,15 @@ public sealed class PaymentRepository
                 x => x.OrderId == orderId,
                 cancellationToken);
     }
+
+    public async Task<Payment?> GetBySubscriptionIdAsync(
+        Guid subscriptionId,
+        CancellationToken cancellationToken = default)
+    {
+        return await _context.Payments
+            .FirstOrDefaultAsync(
+                x => x.SubscriptionId == subscriptionId,
+                cancellationToken);
+    }
 }
+

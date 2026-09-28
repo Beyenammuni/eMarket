@@ -2,7 +2,9 @@ namespace eMarket.Application.Common.Interfaces.Payments;
 
 public sealed record PaymentGatewayRequest(
     Guid PaymentId,
-    Guid OrderId,
+    Guid? OrderId,
+    Guid? SubscriptionId,
+    PaymentGatewayPaymentType PaymentType,
     decimal Amount,
     string Currency,
     string ReturnUrl,
@@ -10,6 +12,12 @@ public sealed record PaymentGatewayRequest(
     PaymentGatewayMerchant Merchant,
     PaymentGatewayAddress DeliveryAddress,
     IReadOnlyCollection<PaymentGatewayItem> Items);
+
+public enum PaymentGatewayPaymentType
+{
+    Order = 1,
+    Subscription = 2
+}
 
 public sealed record PaymentBuyer(
     Guid Id,

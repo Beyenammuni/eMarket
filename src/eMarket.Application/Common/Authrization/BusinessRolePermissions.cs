@@ -1,4 +1,5 @@
 using eMarket.Domain.Businesses.ValueObjects;
+using eMarket.Domain.Subscriptions;
 using static eMarket.Application.Common.Authorization.Permissions;
 
 namespace eMarket.Application.Common.Authorization;
@@ -37,7 +38,10 @@ public static class BusinessRolePermissions
                 Orders.Deliver,
 
                 Payments.View,
-                Payments.Manage
+                Payments.Manage,
+
+                Permissions.Subscriptions.View
+
             ],
 
             [BusinessRole.Manager.Id] =
@@ -63,7 +67,7 @@ public static class BusinessRolePermissions
                 Orders.Manage,
                 Orders.Cancel,
                 Orders.Deliver,
-
+                Permissions.Subscriptions.View,
                 Payments.View
             ],
 

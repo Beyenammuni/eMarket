@@ -7,24 +7,51 @@ namespace eMarket.UnitTests.Catalog.Categories;
 
 public class CategoryTests
 {
+    private static readonly Guid BusinessId =
+        Guid.Parse("11111111-1111-1111-1111-111111111111");
+
     [Fact]
     public void Create_Should_Create_Category()
     {
         var name = CategoryName.Create("Electronics");
 
-        var result = Category.Create(name);
+        var result = Category.Create(
+            BusinessId,
+            name);
 
         result.IsSuccess.Should().BeTrue();
 
         result.Value.Name.Should().Be(name);
-
+        result.Value.BusinessId.Should().Be(BusinessId);
+        result.Value.ParentCategoryId.Should().BeNull();
         result.Value.Status.Should().Be(CategoryStatus.Active);
+    }
+
+    [Fact]
+    public void Create_Should_Create_Subcategory()
+    {
+        var parent = Category.Create(
+            BusinessId,
+            CategoryName.Create("Electronics"))
+            .Value;
+
+        var result = Category.Create(
+            BusinessId,
+            CategoryName.Create("Phones"),
+            parent.Id);
+
+        result.IsSuccess.Should().BeTrue();
+
+        result.Value.BusinessId.Should().Be(BusinessId);
+        result.Value.ParentCategoryId.Should().Be(parent.Id);
+        result.Value.Name.Value.Should().Be("Phones");
     }
 
     [Fact]
     public void Rename_Should_Change_Name()
     {
         var category = Category.Create(
+            BusinessId,
             CategoryName.Create("Electronics"))
             .Value;
 
@@ -41,6 +68,7 @@ public class CategoryTests
     public void Rename_Should_Fail_When_Name_Is_Same()
     {
         var category = Category.Create(
+            BusinessId,
             CategoryName.Create("Books"))
             .Value;
 
@@ -54,6 +82,7 @@ public class CategoryTests
     public void Deactivate_Should_Change_Status()
     {
         var category = Category.Create(
+            BusinessId,
             CategoryName.Create("Books"))
             .Value;
 
@@ -66,6 +95,7 @@ public class CategoryTests
     public void Activate_Should_Change_Status()
     {
         var category = Category.Create(
+            BusinessId,
             CategoryName.Create("Books"))
             .Value;
 
@@ -75,11 +105,14 @@ public class CategoryTests
 
         category.Status.Should().Be(CategoryStatus.Active);
     }
+
     [Fact]
     public void Rename_Should_Update_Name()
     {
         var category = Category
-            .Create(CategoryName.Create("Electronics"))
+            .Create(
+                BusinessId,
+                CategoryName.Create("Electronics"))
             .Value;
 
         var result = category.Rename(
@@ -89,11 +122,14 @@ public class CategoryTests
 
         category.Name.Value.Should().Be("Phones");
     }
+
     [Fact]
     public void Rename_Should_Return_Failure_When_Name_Is_Same()
     {
         var category = Category
-            .Create(CategoryName.Create("Electronics"))
+            .Create(
+                BusinessId,
+                CategoryName.Create("Electronics"))
             .Value;
 
         var result = category.Rename(
@@ -103,11 +139,14 @@ public class CategoryTests
 
         result.Error.Should().Be(CategoryErrors.SameName);
     }
+
     [Fact]
     public void Rename_Should_Add_Domain_Event()
     {
         var category = Category
-            .Create(CategoryName.Create("Electronics"))
+            .Create(
+                BusinessId,
+                CategoryName.Create("Electronics"))
             .Value;
 
         category.ClearDomainEvents();
@@ -121,10 +160,12 @@ public class CategoryTests
             .Should()
             .BeOfType<CategoryRenamedDomainEvent>();
     }
+
     [Fact]
     public void Deactivate_Should_Set_Status_To_Inactive()
     {
         var category = Category.Create(
+            BusinessId,
             CategoryName.Create("Books"))
             .Value;
 
@@ -132,10 +173,12 @@ public class CategoryTests
 
         category.Status.Should().Be(CategoryStatus.Inactive);
     }
+
     [Fact]
     public void Activate_Should_Set_Status_To_Active()
     {
         var category = Category.Create(
+            BusinessId,
             CategoryName.Create("Books"))
             .Value;
 
@@ -145,10 +188,12 @@ public class CategoryTests
 
         category.Status.Should().Be(CategoryStatus.Active);
     }
+
     [Fact]
     public void Deactivate_Should_Add_Domain_Event()
     {
         var category = Category.Create(
+            BusinessId,
             CategoryName.Create("Books"))
             .Value;
 

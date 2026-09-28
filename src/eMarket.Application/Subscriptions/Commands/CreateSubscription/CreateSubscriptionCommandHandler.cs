@@ -37,7 +37,13 @@ internal sealed class CreateSubscriptionCommandHandler
                     "Auth.Unauthorized",
                     "User is not authenticated."));
         }
-
+        if (!Enum.IsDefined(request.DeliveryDay))
+        {
+            return Result<CreateSubscriptionResponse>.Failure(
+                new Error(
+                    "Subscription.InvalidDeliveryDay",
+                    "Invalid delivery day."));
+        }
         var businessId = BusinessId.Create(request.BusinessId);
 
         var productIds = request.Items

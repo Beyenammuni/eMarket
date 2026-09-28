@@ -22,15 +22,43 @@ public sealed class SubscriptionConfiguration : IEntityTypeConfiguration<Subscri
             .HasConversion(new StronglyTypedIdConverter<UserId>(UserId.Create))
             .Metadata.SetValueComparer(new StronglyTypedIdComparer<UserId>());
         builder.Property(x => x.BusinessId).HasConversion(id => id.Value, value => BusinessId.Create(value));
-        builder.Property(x => x.DeliveryDay).HasConversion<int>().IsRequired();
-        builder.Property(x => x.Status).HasConversion<int>().IsRequired();
-        builder.Property(x => x.NextDeliveryDate).IsRequired(); builder.Property(x => x.CreatedAt).IsRequired();
-        builder.Property(x => x.RowVersion).IsRowVersion().IsConcurrencyToken();
-        builder.HasIndex(x => new { x.UserId, x.Status }); builder.HasIndex(x => x.NextDeliveryDate);
+        builder.Property(x => x.DeliveryDay)
+    .HasConversion<int>()
+    .IsRequired();
+
+        builder.Property(x => x.Status)
+            .HasConversion<int>()
+            .IsRequired();
+
+        builder.Property(x => x.BillingCycle)
+            .HasConversion<int>()
+            .IsRequired();
+
+        builder.Property(x => x.NextDeliveryDate)
+            .IsRequired();
+
+        builder.Property(x => x.CurrentPeriodStart)
+            .IsRequired();
+
+        builder.Property(x => x.CurrentPeriodEnd)
+            .IsRequired();
+
+        builder.Property(x => x.CreatedAt)
+            .IsRequired();
+        builder.Property(x => x.RowVersion)
+            .IsRowVersion()
+            .IsConcurrencyToken();
+        builder.HasIndex(x => new { x.UserId, x.Status });
+        builder.HasIndex(x => x.NextDeliveryDate);
         builder.Ignore(x => x.DomainEvents);
-        builder.HasOne<eMarket.Domain.Identity.User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
-        builder.HasOne<eMarket.Domain.Businesses.Business>().WithMany().HasForeignKey(x => x.BusinessId).OnDelete(DeleteBehavior.Restrict);
-        builder.HasMany(x => x.Items).WithOne().HasForeignKey("SubscriptionId").OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne<eMarket.Domain.Identity.User>()
+            .WithMany().HasForeignKey(x => x.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne<eMarket.Domain.Businesses.Business>()
+            .WithMany().HasForeignKey(x => x.BusinessId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasMany(x => x.Items).WithOne()
+            .HasForeignKey("SubscriptionId").OnDelete(DeleteBehavior.Cascade);
 
         builder.OwnsOne(
     x => x.DeliveryAddress,
@@ -75,10 +103,14 @@ public sealed class SubscriptionItemConfiguration : IEntityTypeConfiguration<Sub
 {
     public void Configure(EntityTypeBuilder<SubscriptionItem> builder)
     {
-        builder.ToTable("SubscriptionItems"); builder.HasKey(x => x.Id); builder.Property(x => x.Id).ValueGeneratedNever();
+        builder.ToTable("SubscriptionItems"); builder.HasKey(x => x.Id);
+        builder.Property(x => x.Id).ValueGeneratedNever();
         builder.Property(x => x.ProductId).HasConversion(id => id.Value, value => ProductId.Create(value)).IsRequired();
-        builder.Property(x => x.Quantity).IsRequired(); builder.HasIndex(x => new { x.ProductId });
+        builder.Property(x => x.Quantity).IsRequired();
+        builder.HasIndex(x => new { x.ProductId });
         builder.Ignore(x => x.DomainEvents);
-        builder.HasOne<eMarket.Domain.Catalog.Products.Product>().WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<eMarket.Domain.Catalog.Products.Product>()
+            .WithMany().HasForeignKey(x => x.ProductId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

@@ -6,9 +6,10 @@ using eMarket.Application.Sales.Orders.Commands.Deliver;
 using eMarket.Application.Sales.Orders.Commands.MarkAsPaid;
 using eMarket.Application.Sales.Orders.Commands.Ship;
 using eMarket.Application.Sales.Orders.Commands.StartProcessing;
+using eMarket.Application.Sales.Orders.Queries.GetBusinessOrderById;
+using eMarket.Application.Sales.Orders.Queries.GetBusinessOrders;
 using eMarket.Application.Sales.Orders.Queries.GetMyOrders;
 using eMarket.Application.Sales.Orders.Queries.GetOrderById;
-using eMarket.Domain.Identity.ValueObjects;
 using eMarket.SharedKernel.Constants;
 using MediatR;
 
@@ -33,6 +34,12 @@ public static class OrderEndpoints
             .RequireRoles(Roles.Customer);
 
         group.MapGet(
+    "/business/{businessId:guid}",
+    GetBusinessOrders)
+    .RequireBusinessPermission(
+        Permissions.Orders.View);
+
+        group.MapGet(
             "/{id:guid}",
             GetOrderById)
             .RequireRoles(Roles.Customer);
@@ -42,39 +49,73 @@ public static class OrderEndpoints
     MarkAsPaid)
             .RequireRoles(Roles.Customer);
 
-        group.MapPatch("/{id:guid}/processing",
+        group.MapPatch(
+    "/{id:guid}/processing",
     StartProcessing)
-            .RequireRoles(Roles.Seller,
-            Roles.StoreManager,
-            Roles.Admin,
-            Roles.SuperAdmin);
+    .RequireBusinessPermission(
+        Permissions.Orders.Manage);
 
         group.MapPatch(
     "/{id:guid}/ship",
     Ship)
-            .RequireRoles(Roles.Seller,
-            Roles.StoreManager,
-            Roles.Admin,
-            Roles.SuperAdmin);
+    .RequireBusinessPermission(
+        Permissions.Orders.Manage);
+
+        group.MapGet(
+            "/business/{businessId:guid}/{orderId:guid}",
+            GetBusinessOrderById)
+            .RequireBusinessPermission(
+                Permissions.Orders.View);
 
         group.MapPatch(
-    "/{id:guid}/deliver",
-    Deliver).RequireRoles(Roles.Seller,
-            Roles.StoreManager,
-            Roles.DeliveryDriver,
-            Roles.Admin,
-            Roles.SuperAdmin);
+     "/{id:guid}/deliver",
+     Deliver)
+     .RequireBusinessPermission(
+         Permissions.Orders.Deliver);
 
         group.MapPatch(
     "/{id:guid}/cancel",
-    Cancel).RequireRoles(Roles.Customer,
-            Roles.Seller,
-            Roles.StoreManager,
-            Roles.Admin,
-            Roles.SuperAdmin);
+    Cancel).RequireBusinessPermission(
+         Permissions.Orders.Cancel);
 
         return app;
     }
+    private static async Task<IResult> GetBusinessOrderById(
+    Guid businessId,
+    Guid orderId,
+    ISender sender,
+    CancellationToken cancellationToken)
+    {
+        var result = await sender.Send(
+            new GetBusinessOrderByIdQuery(
+                businessId,
+                orderId),
+            cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return ApiResults.Failure(result.Error);
+        }
+
+        return Results.Ok(result.Value);
+    }
+    private static async Task<IResult> GetBusinessOrders(
+    Guid businessId,
+    ISender sender,
+    CancellationToken cancellationToken)
+    {
+        var result = await sender.Send(
+            new GetBusinessOrdersQuery(businessId),
+            cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return ApiResults.Failure(result.Error);
+        }
+
+        return Results.Ok(result.Value);
+    }
+
     private static async Task<IResult> Cancel(
     Guid id,
     ISender sender,

@@ -32,13 +32,15 @@ public class OrderTests
             "Apt 2",
             40.7128m,
             -74.0060m);
+        var shippingFee = 0.0m;
 
         addressResult.IsSuccess.Should().BeTrue();
 
         var result = Order.Create(
             userId,
             businessId,
-            addressResult.Value!);
+            addressResult.Value!,
+            shippingFee);
 
         result.IsSuccess.Should().BeTrue();
 
@@ -48,6 +50,7 @@ public class OrderTests
         order.Status.Should().Be(OrderStatus.PendingPayment);
         order.Items.Should().BeEmpty();
         order.TotalAmount.Should().Be(0);
+        order.ShippingFee.Should().Be(0);
     }
 
     [Fact]
@@ -217,13 +220,15 @@ public class OrderTests
             -74.0060m);
 
         addressResult.IsSuccess.Should().BeTrue();
-
+        var shippingFee = 0.0m;
         var orderResult = Order.Create(
             UserId.New(),
            BusinessId.New(),
-            addressResult.Value!);
+            addressResult.Value!,
+            shippingFee);
 
         orderResult.IsSuccess.Should().BeTrue();
+
 
         return orderResult.Value!;
     }

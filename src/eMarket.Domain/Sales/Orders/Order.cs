@@ -43,19 +43,20 @@ private Order()
     public DateTime? UpdatedAt { get; private set; }
 
     public byte[] RowVersion { get; private set; } = [];
-
+    public decimal ShippingFee { get; private set; }
     public DeliveryAddress DeliveryAddress { get; private set; } = default!;
 
     public IReadOnlyCollection<OrderItem> Items =>
         _items.AsReadOnly();
 
     public decimal TotalAmount =>
-        _items.Sum(x => x.TotalPrice);
+    _items.Sum(x => x.TotalPrice) + ShippingFee;
 
     public static Result<Order> Create(
-        UserId userId,
-        BusinessId businessId,
-        DeliveryAddress deliveryAddress)
+     UserId userId,
+     BusinessId businessId,
+     DeliveryAddress deliveryAddress,
+     decimal shippingFee)
     {
         var order = new Order(
             OrderId.New(),
@@ -63,7 +64,7 @@ private Order()
             businessId);
 
         order.DeliveryAddress = deliveryAddress;
-
+        order.ShippingFee = shippingFee;
         order.AddDomainEvent(
             new OrderCreatedDomainEvent(order.Id));
 

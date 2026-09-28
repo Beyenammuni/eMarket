@@ -1,9 +1,8 @@
-using eMarket.Domain.Catalog.Categories.ValueObjects;
 using eMarket.Domain.Catalog.Categories.Events;
 using eMarket.Domain.Catalog.Categories.Rules;
+using eMarket.Domain.Catalog.Categories.ValueObjects;
 using eMarket.SharedKernel.Common;
 using eMarket.SharedKernel.Results;
-
 
 namespace eMarket.Domain.Catalog.Categories;
 
@@ -13,27 +12,41 @@ public sealed class Category : AggregateRoot<CategoryId>
     {
     }
 
-    private Category( 
+    private Category(
         CategoryId id,
-        CategoryName name)
+        Guid businessId,
+        CategoryName name,
+        CategoryId? parentCategoryId)
     {
         Id = id;
+        BusinessId = businessId;
         Name = name;
+        ParentCategoryId = parentCategoryId;
         Status = CategoryStatus.Active;
         CreatedAt = DateTime.UtcNow;
     }
 
+    public Guid BusinessId { get; private set; }
+
     public CategoryName Name { get; private set; } = default!;
+
+    public CategoryId? ParentCategoryId { get; private set; }
 
     public CategoryStatus Status { get; private set; }
 
     public DateTime CreatedAt { get; private set; }
 
-    public static Result<Category> Create(CategoryName name)
+    public static Result<Category> Create(
+        Guid businessId,
+        CategoryName name,
+        CategoryId? parentCategoryId = null)
     {
+
         var category = new Category(
             CategoryId.New(),
-            name);
+            businessId,
+            name,
+            parentCategoryId);
 
         category.AddDomainEvent(
             new CategoryCreatedDomainEvent(
@@ -49,8 +62,8 @@ public sealed class Category : AggregateRoot<CategoryId>
             return Result.Failure(CategoryErrors.SameName);
         }
 
-
         Name = newName;
+
         AddDomainEvent(
             new CategoryRenamedDomainEvent(
                 Id,
@@ -80,6 +93,7 @@ public sealed class Category : AggregateRoot<CategoryId>
         {
             return Result.Failure(CategoryErrors.AlreadyInactive);
         }
+
         Status = CategoryStatus.Inactive;
 
         AddDomainEvent(

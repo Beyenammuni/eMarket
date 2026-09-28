@@ -1,9 +1,6 @@
 using eMarket.Domain.Payments;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Microsoft.EntityFrameworkCore.Migrations;
-using System.Text;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace eMarket.Infrastructure.Persistence.Configurations.Payments;
 
@@ -24,10 +21,15 @@ public sealed class PaymentConfiguration
             .ValueGeneratedNever();
 
         builder.Property(x => x.OrderId)
-            .IsRequired();
+     .IsRequired(false);
 
         builder.HasIndex(x => x.OrderId)
             .IsUnique();
+
+        builder.Property(x => x.SubscriptionId)
+    .IsRequired(false);
+
+        builder.HasIndex(x => x.SubscriptionId);
 
         builder.Property(x => x.Status)
             .HasConversion<int>()

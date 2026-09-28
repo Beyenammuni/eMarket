@@ -70,10 +70,7 @@ public static class ProductEndpoints
             UpdateProduct)
             .RequireBusinessPermission(Permissions.Products.Update);
 
-        group.MapPut(
-            "/items/{productId:guid}",
-            UpdateCartItem)
-            .RequireRoles(eMarket.SharedKernel.Constants.Roles.Customer);
+       
 
         return app;
     }
@@ -110,16 +107,26 @@ public static class ProductEndpoints
 
     private static async Task<IResult> AddStock(
      Guid id,
-     [FromServices] BusinessId businessId,
+     HttpContext httpContext,
      [FromBody] StockRequest request,
      [FromServices] ISender sender,
      CancellationToken cancellationToken)
     {
+        var businessId = httpContext.Request.Headers["X-Business-Id"]
+    .FirstOrDefault();
+
+        if (!Guid.TryParse(businessId, out var businessGuid))
+        {
+            return ApiResults.Failure(
+                new eMarket.SharedKernel.Results.Error(
+                    "Business.Context.Required",
+                    "A valid X-Business-Id header is required."));
+        }
         var result = await sender.Send(
             new AddStockCommand(
-                id,
-                businessId.Value,
-                request.Quantity),
+    id,
+    businessGuid,
+    request.Quantity),
             cancellationToken);
 
         if (result.IsFailure)
@@ -130,16 +137,26 @@ public static class ProductEndpoints
 
     private static async Task<IResult> RemoveStock(
         Guid id,
-        [FromServices] BusinessId businessId,
+        HttpContext httpContext,
         [FromBody] StockRequest request,
         [FromServices] ISender sender,
         CancellationToken cancellationToken)
     {
+        var businessId = httpContext.Request.Headers["X-Business-Id"]
+    .FirstOrDefault();
+
+        if (!Guid.TryParse(businessId, out var businessGuid))
+        {
+            return ApiResults.Failure(
+                new eMarket.SharedKernel.Results.Error(
+                    "Business.Context.Required",
+                    "A valid X-Business-Id header is required."));
+        }
         var result = await sender.Send(
             new RemoveStockCommand(
-                id,
-                businessId.Value,
-                request.Quantity),
+    id,
+    businessGuid,
+    request.Quantity),
             cancellationToken);
 
         if (result.IsFailure)
@@ -192,27 +209,7 @@ public static class ProductEndpoints
         return Results.Ok(result.Value);
     }
 
-    private static async Task<IResult> UpdateCartItem(
-        Guid productId,
-        [FromBody] UpdateCartItemRequest request,
-        [FromServices] ISender sender,
-        CancellationToken cancellationToken)
-    {
-        var command = new UpdateCartItemCommand(
-            productId,
-            request.Quantity);
-
-        var result = await sender.Send(
-            command,
-            cancellationToken);
-
-        if (result.IsFailure)
-        {
-            return ApiResults.Failure(result.Error);
-        }
-
-        return Results.NoContent();
-    }
+    
 
     private static async Task<IResult> GetProducts(
         [AsParameters] GetProductsQuery query,

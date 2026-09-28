@@ -1,5 +1,6 @@
 using eMarket.Api.Common;
 using eMarket.Application.Businesses.Queries.GetSellerDashboard;
+using eMarket.Application.Common.Interfaces;
 using eMarket.SharedKernel.Constants;
 using MediatR;
 
@@ -31,11 +32,36 @@ public static class GetSellerDashboardEndpoint
             })
             .WithName("GetSellerDashboard")
             .WithTags("Seller Dashboard")
-            .RequireAuthorization(policy =>
-                policy.RequireRole(
-                    Roles.Seller,
-                    Roles.Admin,
-                    Roles.SuperAdmin));
+            .AddEndpointFilter(async (context, next) =>
+            {
+                var currentUser =
+                    context.HttpContext.RequestServices
+                        .GetRequiredService<ICurrentUser>();
+
+                if (currentUser.UserId is null)
+                    return ApiResults.Unauthorized();
+
+                var isGlobalAdmin =
+                    currentUser.IsInRole(Roles.Admin) ||
+                    currentUser.IsInRole(Roles.SuperAdmin);
+
+                if (isGlobalAdmin)
+                    return await next(context);
+
+                var authorization =
+                    context.HttpContext.RequestServices
+                        .GetRequiredService<IBusinessAuthorization>();
+
+                var allowed =
+                    await authorization.HasPermissionOnAnyBusinessAsync(
+                        Permissions.Business.View,
+                        context.HttpContext.RequestAborted);
+
+                if (!allowed)
+                    return ApiResults.Forbidden();
+
+                return await next(context);
+            });
 
         return app;
     }

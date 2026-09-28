@@ -21,13 +21,21 @@ public sealed class Subscription : AggregateRoot<SubscriptionId>
         DeliveryDay = deliveryDay;
         DeliveryAddress = deliveryAddress;
         NextDeliveryDate = nextDeliveryDate.Date;
+        CurrentPeriodStart = DateTime.UtcNow.Date;
+
+        CurrentPeriodEnd = CurrentPeriodStart.AddMonths(1);
+        BillingCycle = SubscriptionBillingCycle.Monthly;
         Status = SubscriptionStatus.Active;
         CreatedAt = DateTime.UtcNow;
+
     }
 
     public UserId UserId { get; private set; } = default!;
     public BusinessId BusinessId { get; private set; } = default!;
+    public DateTime CurrentPeriodStart { get; private set; }
+    public DateTime CurrentPeriodEnd { get; private set; }
     public SubscriptionDeliveryAddress DeliveryAddress { get; private set; } = default!;
+    public SubscriptionBillingCycle BillingCycle { get; private set; }
     public DayOfWeek DeliveryDay { get; private set; }
     public DateTime NextDeliveryDate { get; private set; }
     public DateTime CreatedAt { get; private set; }
@@ -52,7 +60,8 @@ public sealed class Subscription : AggregateRoot<SubscriptionId>
             userId,
             businessId,
             deliveryDay,
-            nextDeliveryDate, deliveryAddress);
+            nextDeliveryDate,             
+            deliveryAddress);
         return Result<Subscription>.Success(subscription);
     }
 
@@ -124,6 +133,20 @@ public sealed class Subscription : AggregateRoot<SubscriptionId>
         LastGeneratedOrderId = orderId;
         NextDeliveryDate = NextDeliveryDate.AddDays(7);
         UpdatedAt = DateTime.UtcNow;
+        return Result.Success();
+    }
+    public Result Activate()
+    {
+        if (Status == SubscriptionStatus.Cancelled)
+            return Result.Failure(SubscriptionErrors.AlreadyCancelled);
+
+        Status = SubscriptionStatus.Active;
+
+        CurrentPeriodStart = DateTime.UtcNow.Date;
+        CurrentPeriodEnd = CurrentPeriodStart.AddMonths(1);
+
+        UpdatedAt = DateTime.UtcNow;
+
         return Result.Success();
     }
 }

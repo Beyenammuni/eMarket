@@ -80,6 +80,10 @@ public sealed class OrderConfiguration
         builder.Property(x => x.CreatedAt)
             .IsRequired();
 
+        builder.Property(x => x.ShippingFee)
+    .HasPrecision(18, 2)
+    .IsRequired();
+
         builder.Property(x => x.UpdatedAt);
 
         builder.Property(x => x.RowVersion)

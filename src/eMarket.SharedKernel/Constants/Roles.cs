@@ -13,6 +13,7 @@ public static class Roles
     public const string DeliveryDriver = nameof(DeliveryDriver);
 
     public const string StoreManager = nameof(StoreManager);
+    public const string Owner = nameof(Owner);
 
     public static readonly IReadOnlyList<string> All =
     [
@@ -21,6 +22,7 @@ public static class Roles
         Seller,
         Customer,
         DeliveryDriver,
-        StoreManager
+        StoreManager,
+        Owner
     ];
 }

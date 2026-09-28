@@ -2,7 +2,7 @@ using eMarket.Application.Common.IRepositories;
 using eMarket.SharedKernel.Results;
 using MediatR;
 
-namespace eMarket.Application.Identity.Users.Queries.GetUser;
+namespace eMarket.Application.Identity.Users.Queries.GetUserById;
 
 internal sealed class GetUserQueryHandler
     : IRequestHandler<GetUserQuery, Result<GetUserResponse>>

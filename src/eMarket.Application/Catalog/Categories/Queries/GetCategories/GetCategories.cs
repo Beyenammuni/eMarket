@@ -5,7 +5,5 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace eMarket.Application.Catalog.Categories.Queries.GetCategoryById
-{
+namespace eMarket.Application.Catalog.Categories.Queries.GetCategories;
     public sealed record GetCategories : IRequest<Result<List<CategoryResponse>>>;
-}

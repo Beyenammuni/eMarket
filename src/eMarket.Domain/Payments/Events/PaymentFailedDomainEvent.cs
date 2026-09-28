@@ -4,5 +4,6 @@ namespace eMarket.Domain.Payments.Events;
 
 public sealed record PaymentFailedDomainEvent(
     PaymentId PaymentId,
-    Guid OrderId)
+    Guid? OrderId,
+    Guid? SubscriptionId)
     : DomainEvent;

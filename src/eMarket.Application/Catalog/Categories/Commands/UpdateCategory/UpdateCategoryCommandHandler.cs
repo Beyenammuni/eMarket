@@ -12,30 +12,46 @@ public sealed class UpdateCategoryCommandHandler
 {
     private readonly ICategoryRepository _repository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ICurrentUser _currentUser;
 
     public UpdateCategoryCommandHandler(
         ICategoryRepository repository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        ICurrentUser currentUser)
     {
         _repository = repository;
         _unitOfWork = unitOfWork;
+        _currentUser = currentUser;
     }
 
     public async Task<Result<UpdateCategoryResponse>> Handle(
         UpdateCategoryCommand request,
         CancellationToken cancellationToken)
     {
+        if (_currentUser.BusinessId is null)
+        {
+            return Result<UpdateCategoryResponse>
+                .Failure(CategoryErrors.BusinessRequired);
+        }
+
+        var businessId = _currentUser.BusinessId;
+
         var category = await _repository.GetByIdAsync(
             CategoryId.Create(request.Id),
+            businessId,
             cancellationToken);
 
         if (category is null)
+        {
             return Result<UpdateCategoryResponse>
                 .Failure(CategoryErrors.NotFound);
+        }
 
         var newName = CategoryName.Create(request.Name);
+
         var exists = await _repository.ExistsAsync(
             newName,
+            businessId,
             category.Id,
             cancellationToken);
 
@@ -48,8 +64,10 @@ public sealed class UpdateCategoryCommandHandler
         var renameResult = category.Rename(newName);
 
         if (renameResult.IsFailure)
+        {
             return Result<UpdateCategoryResponse>
                 .Failure(renameResult.Error);
+        }
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 

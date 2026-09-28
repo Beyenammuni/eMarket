@@ -16,19 +16,21 @@ internal sealed class CreateOrderCommandHandler
     private readonly IOrderRepository _orderRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUser _currentUser;
-
-public CreateOrderCommandHandler(
+    private readonly IBusinessRepository _businessRepository;
+    public CreateOrderCommandHandler(
     ICartRepository cartRepository,
     IProductRepository productRepository,
     IOrderRepository orderRepository,
     IUnitOfWork unitOfWork,
-    ICurrentUser currentUser)
+    ICurrentUser currentUser,
+    IBusinessRepository businessRepository)
     {
         _cartRepository = cartRepository;
         _productRepository = productRepository;
         _orderRepository = orderRepository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
+        _businessRepository = businessRepository;
     }
 
     public async Task<Result<CreateOrderResponse>> Handle(
@@ -133,11 +135,34 @@ public CreateOrderCommandHandler(
                     "An order cannot contain products from multiple businesses."));
         }
 
+        var business = await _businessRepository.GetByIdAsync(
+    businessId,
+    cancellationToken);
+
+        if (business is null)
+        {
+            return Result<CreateOrderResponse>.Failure(
+                new Error(
+                    "Order.BusinessNotFound",
+                    "The business could not be found."));
+        }
+
         // 6. Create Order
+        // 6. Calculate shipping
+        var subtotal = products.Sum(x => x.Price.Amount);
+
+        var shippingFee =
+            business.FreeShippingThreshold.HasValue &&
+            subtotal >= business.FreeShippingThreshold.Value
+                ? 0m
+                : business.ShippingFee;
+
+        // 7. Create Order
         var orderResult = Order.Create(
-            userId,
-            businessId,
-            deliveryAddress);
+    userId,
+    businessId,
+    deliveryAddress,
+    shippingFee);
 
         if (orderResult.IsFailure)
         {
@@ -195,11 +220,12 @@ public CreateOrderCommandHandler(
 
         // 11. Response
         return Result<CreateOrderResponse>.Success(
-            new CreateOrderResponse(
-                order.Id.Value,
-                order.TotalAmount,
-                order.Status.ToString(),
-                order.Items.Sum(x => x.Quantity)));
+           new CreateOrderResponse(
+    order.Id.Value,
+    order.TotalAmount,
+    order.ShippingFee,
+    order.Status.ToString(),
+    order.Items.Sum(x => x.Quantity)));
     }
 
 }

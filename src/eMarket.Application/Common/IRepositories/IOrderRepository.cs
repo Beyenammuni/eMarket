@@ -20,4 +20,8 @@ public interface IOrderRepository
     Task AddAsync(
         Order order,
         CancellationToken cancellationToken = default);
+
+    Task<List<Order>> GetByBusinessIdAsync(
+    Guid businessId,
+    CancellationToken cancellationToken = default);
 }

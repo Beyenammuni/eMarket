@@ -11,8 +11,9 @@ namespace eMarket.Domain.Businesses;
 public sealed class Business : AggregateRoot<BusinessId>
 {
     private const decimal DefaultPlatformCommissionRate = 10m;
+    private const decimal DefaultShippingFee = 0m;
 
-private readonly List<BusinessMember> _members = new();
+    private readonly List<BusinessMember> _members = new();
 
     private Business()
     {
@@ -32,7 +33,8 @@ private readonly List<BusinessMember> _members = new();
 
         PlatformCommissionRate =
             DefaultPlatformCommissionRate;
-
+        ShippingFee = DefaultShippingFee;
+        FreeShippingThreshold = null;
         CreatedAt = DateTime.UtcNow;
     }
 
@@ -43,7 +45,9 @@ private readonly List<BusinessMember> _members = new();
     public BusinessStatus Status { get; private set; }
 
     public decimal PlatformCommissionRate { get; private set; }
+    public decimal ShippingFee { get; private set; }
 
+    public decimal? FreeShippingThreshold { get; private set; }
     public string? IyzicoSubMerchantKey { get; private set; }
 
     public string? IyzicoSubMerchantStatus { get; private set; }
@@ -100,7 +104,31 @@ private readonly List<BusinessMember> _members = new();
 
         return Result.Success();
     }
+    public Result SetShippingSettings(
+    decimal shippingFee,
+    decimal? freeShippingThreshold)
+    {
+        if (shippingFee < 0)
+        {
+            return Result.Failure(
+                new Error(
+                    "Business.InvalidShippingFee",
+                    "Shipping fee cannot be negative."));
+        }
 
+        if (freeShippingThreshold is < 0)
+        {
+            return Result.Failure(
+                new Error(
+                    "Business.InvalidFreeShippingThreshold",
+                    "Free shipping threshold cannot be negative."));
+        }
+
+        ShippingFee = shippingFee;
+        FreeShippingThreshold = freeShippingThreshold;
+
+        return Result.Success();
+    }
     public Result SetIyzicoSubMerchant(
         string subMerchantKey,
         string status)

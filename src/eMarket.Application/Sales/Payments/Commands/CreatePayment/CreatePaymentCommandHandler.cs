@@ -205,28 +205,29 @@ internal sealed class CreatePaymentCommandHandler
             order.DeliveryAddress.Longitude);
 
         var items = order.Items
-            .Select(item =>
-                new PaymentGatewayItem(
-                    item.ProductId.Value,
-                    item.ProductName,
-                    item.UnitPrice.Amount,
-                    item.Quantity))
-            .ToList();
+     .Select(item =>
+         new PaymentGatewayItem(
+             item.ProductId.Value,
+             item.ProductName,
+             item.UnitPrice.Amount,
+             item.Quantity))
+     .ToList();
 
         var gatewayResult =
             await _paymentGateway.CreatePaymentAsync(
-                new PaymentGatewayRequest(
-                    payment.Id.Value,
-                    order.Id.Value,
-                    payment.Amount.Amount,
-                    payment.Amount.Currency.ToString(),
-                    request.ReturnUrl,
-                    buyer,
-                    merchant,
-                    deliveryAddress,
-                    items),
+new PaymentGatewayRequest(
+    payment.Id.Value,
+    order.Id.Value,
+    null,
+     PaymentGatewayPaymentType.Order,
+    payment.Amount.Amount,
+    payment.Amount.Currency.ToString(),
+    request.ReturnUrl,
+    buyer,
+    merchant,
+    deliveryAddress,
+    items),
                 cancellationToken);
-
         if (!gatewayResult.IsSuccess)
         {
             return Result<CreatePaymentResponse>.Failure(

@@ -2,7 +2,6 @@ using eMarket.Domain.Businesses;
 using eMarket.Domain.Businesses.Entities;
 using eMarket.Domain.Businesses.ValueObjects;
 using eMarket.Infrastructure.Persistence.Configurations.Base;
-using eMarket.Infrastructure.Persistence.Converters;
 using eMarket.SharedKernel.Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -42,6 +41,17 @@ public sealed class BusinessConfiguration
 
         builder.Property(x => x.CreatedAt)
             .IsRequired();
+
+        builder.Property(x => x.PlatformCommissionRate)
+    .HasPrecision(18, 2)
+    .IsRequired();
+
+        builder.Property(x => x.ShippingFee)
+            .HasPrecision(18, 2)
+            .IsRequired();
+
+        builder.Property(x => x.FreeShippingThreshold)
+            .HasPrecision(18, 2);
 
         builder.OwnsOne(
             x => x.MerchantDetails,

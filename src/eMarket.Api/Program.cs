@@ -13,8 +13,6 @@ using eMarket.Api.Endpoints.Subscriptions;
 using eMarket.Application.Catalog.Categories.Commands.UpdateCategory;
 using eMarket.Infrastructure.Health;
 using eMarket.Infrastructure.Identity;
-using eMarket.SharedKernel.Exceptions;
-using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.OpenApi;
