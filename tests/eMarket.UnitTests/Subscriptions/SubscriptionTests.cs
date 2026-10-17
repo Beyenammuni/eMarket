@@ -1,3 +1,4 @@
+
 using eMarket.Domain.Businesses;
 using eMarket.Domain.Catalog.Products;
 using eMarket.Domain.Identity;
@@ -10,7 +11,7 @@ namespace eMarket.UnitTests.Subscriptions;
 public sealed class SubscriptionTests
 {
     [Fact]
-    public void Create_ShouldCreateActiveSubscription()
+    public void Create_ShouldCreatePendingPaymentSubscription()
     {
         var result = Subscription.Create(
             UserId.New(),
@@ -20,7 +21,7 @@ public sealed class SubscriptionTests
             CreateDeliveryAddress());
 
         result.IsSuccess.Should().BeTrue();
-        result.Value!.Status.Should().Be(SubscriptionStatus.Active);
+        result.Value!.Status.Should().Be(SubscriptionStatus.PendingPayment);
     }
 
     [Fact]
@@ -62,12 +63,13 @@ public sealed class SubscriptionTests
             date,
             CreateDeliveryAddress()).Value!;
 
-        subscription.AddOrUpdateItem(
-            ProductId.New(),
-            2);
+        subscription.AddOrUpdateItem(ProductId.New(), 2);
 
-        subscription.SkipNextDelivery();
+        subscription.Activate().IsSuccess.Should().BeTrue();
 
+        var result = subscription.SkipNextDelivery();
+
+        result.IsSuccess.Should().BeTrue();
         subscription.NextDeliveryDate.Should().Be(date.AddDays(7));
     }
 
@@ -81,10 +83,7 @@ public sealed class SubscriptionTests
             DateTime.UtcNow.Date,
             CreateDeliveryAddress()).Value!;
 
-        subscription.AddOrUpdateItem(
-            ProductId.New(),
-            1);
-
+        subscription.AddOrUpdateItem(ProductId.New(), 1);
         subscription.Cancel();
 
         subscription.Status.Should().Be(SubscriptionStatus.Cancelled);
