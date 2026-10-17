@@ -51,5 +51,10 @@ namespace eMarket.Domain.Identity
         public static readonly Error AccountNotActive = new(
             "User.AccountNotActive",
             "User account is not active.");
+
+        public static readonly Error InvalidRefreshToken = new(
+            "Auth.InvalidRefreshToken",
+            "The refresh token is invalid, expired, or revoked.");
+
     }
 }

@@ -33,9 +33,14 @@ internal sealed class IyzicoPaymentGateway : IPaymentGateway
             Id = request.Buyer.Id.ToString(),
             Name = request.Buyer.Name,
             Surname = request.Buyer.Surname,
-            GsmNumber = request.Buyer.Phone,
+            GsmNumber = NormalizeTurkishPhone(request.Buyer.Phone),
             Email = request.Buyer.Email,
-            Country = "Turkey"
+            IdentityNumber = request.Buyer.IdentityNumber,
+
+            RegistrationAddress = request.DeliveryAddress.AddressLine,
+            City = request.DeliveryAddress.City,
+            Country = "Turkey",
+            ZipCode = request.DeliveryAddress.PostalCode,
         };
 
         var shippingAddress = CreateAddress(
@@ -110,7 +115,66 @@ internal sealed class IyzicoPaymentGateway : IPaymentGateway
                 ex.Message);
         }
     }
+    public async Task<PaymentCheckoutResult> GetCheckoutResultAsync(
+    string token,
+    CancellationToken cancellationToken = default)
+    {
+        var options = new Iyzipay.Options
+        {
+            ApiKey = _options.ApiKey,
+            SecretKey = _options.SecretKey,
+            BaseUrl = _options.BaseUrl
+        };
 
+        var request = new RetrieveCheckoutFormRequest
+        {
+            Token = token
+        };
+
+        try
+        {
+            var response =
+                await CheckoutForm.Retrieve(
+                    request,
+                    options);
+
+            if (!string.Equals(
+                    response.Status,
+                    Status.SUCCESS.ToString(),
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                return new PaymentCheckoutResult(
+                    false,
+                    null,
+                    response.ErrorMessage ??
+                    "iyzico checkout result could not be retrieved.");
+            }
+
+            if (!string.Equals(
+                    response.PaymentStatus,
+                    "SUCCESS",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                return new PaymentCheckoutResult(
+                    false,
+                    response.PaymentId,
+                    response.ErrorMessage ??
+                    "iyzico payment was not successful.");
+            }
+
+            return new PaymentCheckoutResult(
+                true,
+                response.PaymentId,
+                null);
+        }
+        catch (Exception ex)
+        {
+            return new PaymentCheckoutResult(
+                false,
+                null,
+                ex.Message);
+        }
+    }
     private static List<BasketItem> CreateBasketItems(
         PaymentGatewayRequest request)
     {
@@ -192,5 +256,39 @@ internal sealed class IyzicoPaymentGateway : IPaymentGateway
             ", ",
             parts.Where(x =>
                 !string.IsNullOrWhiteSpace(x)));
+    }
+    private static string NormalizeTurkishPhone(string phone)
+    {
+        if (string.IsNullOrWhiteSpace(phone))
+        {
+            throw new ArgumentException(
+                "Buyer phone number is required.",
+                nameof(phone));
+        }
+
+        var digits = new string(
+            phone.Where(char.IsDigit).ToArray());
+
+        if (digits.StartsWith("0090"))
+        {
+            digits = digits[4..];
+        }
+        else if (digits.StartsWith("90"))
+        {
+            digits = digits[2..];
+        }
+        else if (digits.StartsWith("0"))
+        {
+            digits = digits[1..];
+        }
+
+        if (digits.Length != 10)
+        {
+            throw new ArgumentException(
+                "Turkish phone number must contain 10 national digits.",
+                nameof(phone));
+        }
+
+        return $"+90{digits}";
     }
 }

@@ -21,4 +21,14 @@ public sealed class MockPaymentGateway : IPaymentGateway
                 providerPaymentId,
                 null));
     }
+    public Task<PaymentCheckoutResult> GetCheckoutResultAsync(
+    string token,
+    CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult(
+            new PaymentCheckoutResult(
+                true,
+                token,
+                null));
+    }
 }

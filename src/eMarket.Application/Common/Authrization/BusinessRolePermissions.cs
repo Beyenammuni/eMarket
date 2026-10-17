@@ -16,7 +16,8 @@ public static class BusinessRolePermissions
                 Business.ManageMembers,
                 Business.ManageRoles,
                 Business.TransferOwnership,
-
+                Business.Suspend,
+                Business.Activate,
                 Products.View,
                 Products.Create,
                 Products.Update,

@@ -11,7 +11,7 @@ public interface IIdentityDbContext
     DbSet<UserCredential> UserCredentials { get; }
 
     DbSet<PasswordResetToken> PasswordResetTokens { get; }
-
+    DbSet<RefreshToken> RefreshTokens { get; }
     DbSet<UserRoleAssignment> UserRoleAssignments { get; }
 
     Task<int> SaveChangesAsync(

@@ -112,6 +112,10 @@ public sealed class BusinessConfiguration
                     .IsRequired();
             });
 
+        builder.Property(x => x.SupportsSubscriptions)
+    .HasDefaultValue(false)
+    .IsRequired();
+
         builder.Navigation(x => x.Members)
             .UsePropertyAccessMode(PropertyAccessMode.Field);
 

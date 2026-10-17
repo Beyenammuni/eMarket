@@ -19,8 +19,8 @@ public sealed class DeliveryAddress
         string street,
         string buildingNumber,
         string apartmentNumber,
-        decimal latitude,
-        decimal longitude)
+        decimal? latitude,
+        decimal? longitude)
     {
         FullName = fullName;
         PhoneNumber = phoneNumber;
@@ -48,9 +48,9 @@ public sealed class DeliveryAddress
 
     public string PostalCode { get; private set; } = default!;
 
-    public decimal Latitude { get; private set; }
+    public decimal? Latitude { get; private set; }
 
-    public decimal Longitude { get; private set; }
+    public decimal? Longitude { get; private set; }
     public string Neighborhood { get; private set; } = default!;
     public string Street { get; private set; } = default!;
     public string BuildingNumber { get; private set; } = default!;
@@ -67,8 +67,8 @@ public sealed class DeliveryAddress
         string street,
         string buildingNumber,
         string apartmentNumber,
-        decimal latitude,
-        decimal longitude)
+        decimal? latitude,
+        decimal? longitude)
     {
         if (string.IsNullOrWhiteSpace(fullName))
             return Result<DeliveryAddress>.Failure(new Error("Address.FullName.Required", "Full name is required."));

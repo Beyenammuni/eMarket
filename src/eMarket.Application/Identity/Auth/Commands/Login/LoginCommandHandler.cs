@@ -1,10 +1,12 @@
 using eMarket.Application.Common.Interfaces;
 using eMarket.Domain.Identity;
-using eMarket.SharedKernel.Common;
+using eMarket.Domain.Identity.Entities;
 using eMarket.Domain.Identity.ValueObjects;
+using eMarket.SharedKernel.Common;
 using eMarket.SharedKernel.Results;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+
 
 namespace eMarket.Application.Identity.Auth.Commands.Login;
 
@@ -14,15 +16,17 @@ internal sealed class LoginCommandHandler
     private readonly IIdentityDbContext _context;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IJwtService _jwtService;
-
+    private readonly IRefreshTokenService _refreshTokenService;
     public LoginCommandHandler(
         IIdentityDbContext context,
         IPasswordHasher passwordHasher,
-        IJwtService jwtService)
+        IJwtService jwtService,
+        IRefreshTokenService refreshTokenService)
     {
         _context = context;
         _passwordHasher = passwordHasher;
         _jwtService = jwtService;
+        _refreshTokenService = refreshTokenService;
     }
 
     public async Task<Result<LoginResponse>> Handle(
@@ -99,18 +103,32 @@ internal sealed class LoginCommandHandler
             .Cast<string>()
             .ToList();
 
+
         var accessToken = _jwtService.GenerateToken(
             user.Id,
             user.Email.Value,
             roles);
 
+        var refreshToken = _refreshTokenService.GenerateToken();
+
+        var refreshTokenEntity = new eMarket.Domain.Identity.Entities.RefreshToken(
+            Guid.NewGuid(),
+            user.Id,
+            _refreshTokenService.HashToken(refreshToken),
+            DateTime.UtcNow,
+            DateTime.UtcNow.AddDays(7));
+
+        _context.RefreshTokens.Add(refreshTokenEntity);
+
+
         await _context.SaveChangesAsync(
             cancellationToken);
 
         return Result<LoginResponse>.Success(
-            new LoginResponse(
-                user.Id.Value,
-                user.Email.Value,
-                accessToken));
+    new LoginResponse(
+        user.Id.Value,
+        user.Email.Value,
+        accessToken,
+        refreshToken));
     }
 }

@@ -48,11 +48,11 @@ public sealed class CreateOrderCommandValidator
             .MaximumLength(20);
 
         RuleFor(x => x.Latitude)
-            .InclusiveBetween(-90, 90)
-            .NotEqual(0);
+            .InclusiveBetween(-90, 90);
+
 
         RuleFor(x => x.Longitude)
-            .InclusiveBetween(-180, 180)
-            .NotEqual(0);
+            .InclusiveBetween(-180, 180);
+
     }
 }

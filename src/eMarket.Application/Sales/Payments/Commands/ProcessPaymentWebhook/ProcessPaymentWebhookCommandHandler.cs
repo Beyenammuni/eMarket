@@ -55,6 +55,8 @@ internal sealed class ProcessPaymentWebhookCommandHandler
 
             return Result.Success();
         }
+        var wasAlreadySucceeded =
+            payment.Status == PaymentStatus.Succeeded;
 
         var paymentResult = payment.MarkAsSucceeded(
             request.Provider,
@@ -62,6 +64,11 @@ internal sealed class ProcessPaymentWebhookCommandHandler
 
         if (paymentResult.IsFailure)
             return paymentResult;
+
+        if (wasAlreadySucceeded)
+        {
+            return Result.Success();
+        }
 
         // Order payment
         if (payment.OrderId is not null)

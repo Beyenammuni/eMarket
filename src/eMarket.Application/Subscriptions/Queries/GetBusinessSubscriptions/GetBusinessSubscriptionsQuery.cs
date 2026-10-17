@@ -31,8 +31,8 @@ public sealed record SubscriptionDeliveryAddressResponse(
     string Street,
     string BuildingNumber,
     string ApartmentNumber,
-    decimal Latitude,
-    decimal Longitude);
+    decimal? Latitude,
+    decimal? Longitude);
 
 public sealed record SubscriptionItemResponse(
     Guid ProductId,

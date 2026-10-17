@@ -11,6 +11,7 @@ using eMarket.Api.Endpoints.Sales.Carts;
 using eMarket.Api.Endpoints.Seller;
 using eMarket.Api.Endpoints.Subscriptions;
 using eMarket.Application.Catalog.Categories.Commands.UpdateCategory;
+using eMarket.Application.Common.Interfaces.Payments;
 using eMarket.Infrastructure.Health;
 using eMarket.Infrastructure.Identity;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -183,6 +184,7 @@ app.MapAdminEndpoints();
 app.MapApproveBusinessEndpoint();
 app.MapCloseBusinessEndpoint();
 app.MapUserEndpoints();
+app.MapUserAddressesEndpoints();
 using (var scope = app.Services.CreateScope())
 {
     var seeder = scope.ServiceProvider
@@ -190,6 +192,22 @@ using (var scope = app.Services.CreateScope())
 
     await seeder.SeedAsync();
 }
+
+
+if (app.Environment.IsDevelopment())
+{
+    using var scope = app.Services.CreateScope();
+
+    var subMerchantService = scope.ServiceProvider
+        .GetRequiredService<IIyzicoSubMerchantService>();
+
+    var result = await subMerchantService.UpdatePersonalSubMerchantAsync(
+        Guid.Parse("5b7ab094-9f80-4a99-9bef-a386fa076f78"));
+
+    Console.WriteLine(
+        $"Sub-merchant update: Success={result.IsSuccess}, Status={result.Status}, Error={result.Error}");
+}
+
 app.Run();
 
 static string GetClientKey(HttpContext context)

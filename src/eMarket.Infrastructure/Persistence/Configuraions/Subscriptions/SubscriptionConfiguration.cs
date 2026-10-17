@@ -21,7 +21,8 @@ public sealed class SubscriptionConfiguration : IEntityTypeConfiguration<Subscri
         builder.Property(x => x.UserId)
             .HasConversion(new StronglyTypedIdConverter<UserId>(UserId.Create))
             .Metadata.SetValueComparer(new StronglyTypedIdComparer<UserId>());
-        builder.Property(x => x.BusinessId).HasConversion(id => id.Value, value => BusinessId.Create(value));
+        builder.Property(x => x.BusinessId)
+            .HasConversion(id => id.Value, value => BusinessId.Create(value));
         builder.Property(x => x.DeliveryDay)
     .HasConversion<int>()
     .IsRequired();
@@ -42,6 +43,10 @@ public sealed class SubscriptionConfiguration : IEntityTypeConfiguration<Subscri
 
         builder.Property(x => x.CurrentPeriodEnd)
             .IsRequired();
+
+        builder.Property(x => x.IyzicoSubscriptionReferenceCode)
+    .HasMaxLength(100)
+    .IsRequired(false);
 
         builder.Property(x => x.CreatedAt)
             .IsRequired();
@@ -89,12 +94,10 @@ public sealed class SubscriptionConfiguration : IEntityTypeConfiguration<Subscri
             .IsRequired();
 
         address.Property(x => x.Latitude)
-            .HasPrecision(9, 6)
-            .IsRequired();
+            .HasPrecision(9, 6);
 
         address.Property(x => x.Longitude)
-            .HasPrecision(9, 6)
-            .IsRequired();
+            .HasPrecision(9, 6);
     });
     }
 }

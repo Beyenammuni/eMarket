@@ -52,7 +52,7 @@ internal sealed class IyzicoSubscriptionGateway
                 Name = request.Buyer.Name,
                 Surname = request.Buyer.Surname,
                 Email = request.Buyer.Email,
-                GsmNumber = request.Buyer.Phone,
+                GsmNumber = NormalizeTurkishPhone(request.Buyer.Phone),
                 IdentityNumber = request.Buyer.IdentityNumber,
                 BillingAddress = CreateAddress(request.Address),
                 ShippingAddress = CreateAddress(request.Address)
@@ -65,7 +65,8 @@ internal sealed class IyzicoSubscriptionGateway
                     CallbackUrl = request.ReturnUrl,
                     PricingPlanReferenceCode =
                         pricingPlanReferenceCode,
-                    SubscriptionInitialStatus = "ACTIVE",
+                    SubscriptionInitialStatus =
+    SubscriptionStatus.ACTIVE.ToString(),
                     Customer = customer
                 };
 
@@ -73,6 +74,18 @@ internal sealed class IyzicoSubscriptionGateway
                 Subscription.InitializeCheckoutForm(
                     checkoutRequest,
                     options);
+
+            Console.WriteLine(
+    $"IYZICO STATUS: {response.Status}");
+
+            Console.WriteLine(
+                $"IYZICO ERROR CODE: {response.ErrorCode}");
+
+            Console.WriteLine(
+                $"IYZICO ERROR MESSAGE: {response.ErrorMessage}");
+
+            Console.WriteLine(
+                $"IYZICO TOKEN: {response.Token}");
 
             if (!string.Equals(
                     response.Status,
@@ -109,43 +122,13 @@ internal sealed class IyzicoSubscriptionGateway
     Iyzipay.Options options)
     {
         var productReferenceCode =
-            _options.SubscriptionProductReferenceCode;
+    _options.SubscriptionProductReferenceCode;
+
 
         if (string.IsNullOrWhiteSpace(productReferenceCode))
         {
-            var createProductRequest =
-                new CreateProductRequest
-                {
-                    ConversationId = Guid.NewGuid().ToString(),
-                    Name = "eMarket",
-                    Description =
-                        "eMarket monthly recurring subscription."
-                };
-
-            var productResponse =
-                Product.Create(
-                    createProductRequest,
-                    options);
-            if (!string.Equals(
-        productResponse.Status,
-        Status.SUCCESS.ToString(),
-        StringComparison.OrdinalIgnoreCase))
-            {
-                throw new InvalidOperationException(
-                    $"iyzico Product.Create failed. " +
-                    $"Status: {productResponse.Status}, " +
-                    $"ErrorCode: {productResponse.ErrorCode}, " +
-                    $"ErrorMessage: {productResponse.ErrorMessage}");
-            }
-
-            productReferenceCode =
-                productResponse.Data?.ReferenceCode;
-
-            if (string.IsNullOrWhiteSpace(productReferenceCode))
-            {
-                throw new InvalidOperationException(
-                    "Pricing plan failed: ProductReferenceCode is empty.");
-            }
+            throw new InvalidOperationException(
+                "iyzico SubscriptionProductReferenceCode is not configured.");
         }
 
         var plansRequest =
@@ -161,7 +144,8 @@ internal sealed class IyzicoSubscriptionGateway
             Plan.RetrieveAll(
                 plansRequest,
                 options);
-
+        Console.WriteLine(
+    $"iyzico plans count: {plansResponse.Data?.Items?.Count ?? 0}");
         if (!string.Equals(
         plansResponse.Status,
         Status.SUCCESS.ToString(),
@@ -175,25 +159,23 @@ internal sealed class IyzicoSubscriptionGateway
         }
 
         var existingPlan =
-            plansResponse.Data?.Items?
-                .FirstOrDefault(x =>
-                    decimal.TryParse(
-                        x.Price,
-                        out var price) &&
-                    price == monthlyAmount &&
-                    string.Equals(
-                        x.CurrencyCode,
-                        currency,
-                        StringComparison.OrdinalIgnoreCase) &&
-                    string.Equals(
-                        x.PaymentInterval,
-                        "MONTHLY",
-                        StringComparison.OrdinalIgnoreCase) &&
-                    x.PaymentIntervalCount == 1 &&
-                    string.Equals(
-                        x.PlanPaymentType,
-                        "RECURRING",
-                        StringComparison.OrdinalIgnoreCase));
+     plansResponse.Data?.Items?
+         .FirstOrDefault(x =>
+             decimal.TryParse(
+                 x.Price,
+                 System.Globalization.NumberStyles.Any,
+                 System.Globalization.CultureInfo.InvariantCulture,
+                 out var price) &&
+             Math.Abs(price - monthlyAmount) < 0.01m &&
+             string.Equals(
+                 x.CurrencyCode,
+                 currency,
+                 StringComparison.OrdinalIgnoreCase) &&
+             string.Equals(
+                 x.PaymentInterval,
+                 "MONTHLY",
+                 StringComparison.OrdinalIgnoreCase) &&
+             x.PaymentIntervalCount == 1);
 
         if (existingPlan is not null)
             return existingPlan.ReferenceCode;
@@ -234,7 +216,7 @@ internal sealed class IyzicoSubscriptionGateway
 
         return createPlanResponse.Data?.ReferenceCode;
     }
-    
+
     private static Address CreateAddress(
         SubscriptionPaymentAddress address)
     {
@@ -285,5 +267,105 @@ internal sealed class IyzicoSubscriptionGateway
         var response = Product.RetrieveAll(request, options);
 
         return System.Text.Json.JsonSerializer.Serialize(response);
+    }
+    public async Task<SubscriptionCheckoutResult>
+    GetCheckoutResultAsync(
+        string token,
+        CancellationToken cancellationToken = default)
+    {
+        var options = new Iyzipay.Options
+        {
+            ApiKey = _options.ApiKey,
+            SecretKey = _options.SecretKey,
+            BaseUrl = _options.BaseUrl
+        };
+
+        try
+        {
+            var request = new GetCheckoutFormResultRequest
+            {
+                Token = token
+            };
+
+            var response =
+                Subscription.GetCheckoutFormResult(
+                    request,
+                    options);
+            Console.WriteLine(
+    $"IYZICO RESULT CONVERSATION ID: {response.ConversationId}");
+
+            Console.WriteLine(
+                $"IYZICO RESULT STATUS: {response.Status}");
+
+            Console.WriteLine(
+                $"IYZICO SUBSCRIPTION STATUS: {response.Data?.SubscriptionStatus}");
+
+            if (!string.Equals(
+                    response.Status,
+                    Status.SUCCESS.ToString(),
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                return new SubscriptionCheckoutResult(
+                    false,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    response.ErrorMessage ??
+                    "iyzico subscription checkout result failed.");
+            }
+
+            var data = response.Data;
+            Console.WriteLine(
+    $"IYZICO CHECKOUT DATA: {System.Text.Json.JsonSerializer.Serialize(data)}");
+            Guid? paymentId = null;
+
+            if (Guid.TryParse(
+                    response.ConversationId,
+                    out var parsedPaymentId))
+            {
+                paymentId = parsedPaymentId;
+            }
+
+            return new SubscriptionCheckoutResult(
+                true,
+                paymentId,
+                data?.ReferenceCode,
+                data?.PricingPlanReferenceCode,
+                data?.CustomerReferenceCode,
+                data?.SubscriptionStatus,
+                null);
+        }
+        catch (Exception ex)
+        {
+            return new SubscriptionCheckoutResult(
+                false,
+                null,
+                null,
+                null,
+                null,
+                null,
+                ex.Message);
+        }
+    }
+    private static string NormalizeTurkishPhone(string phone)
+    {
+        var value = phone.Trim()
+            .Replace(" ", "")
+            .Replace("-", "")
+            .Replace("(", "")
+            .Replace(")", "");
+
+        if (value.StartsWith("+90"))
+            return value;
+
+        if (value.StartsWith("90"))
+            return "+" + value;
+
+        if (value.StartsWith("0"))
+            return "+90" + value[1..];
+
+        return "+90" + value;
     }
 }

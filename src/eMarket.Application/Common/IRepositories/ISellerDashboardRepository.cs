@@ -5,9 +5,10 @@ namespace eMarket.Application.Common.IRepositories;
 public interface ISellerDashboardRepository
 {
     Task<SellerDashboardData> GetDashboardAsync(
-        DateTime fromUtc,
-        DateTime toUtc,
-        CancellationToken cancellationToken = default);
+    DateTime fromUtc,
+    DateTime toUtc,
+    Guid? businessId = null,
+    CancellationToken cancellationToken = default);
 }
 
 public sealed record SellerDashboardData(

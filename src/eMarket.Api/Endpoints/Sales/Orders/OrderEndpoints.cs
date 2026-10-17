@@ -272,5 +272,5 @@ public sealed record CreateOrderRequest(
     string Street,
     string BuildingNumber,
     string ApartmentNumber,
-    decimal Latitude,
-    decimal Longitude);
+    decimal? Latitude,
+    decimal? Longitude);

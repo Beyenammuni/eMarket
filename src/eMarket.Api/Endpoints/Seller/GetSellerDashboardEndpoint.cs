@@ -11,15 +11,19 @@ public static class GetSellerDashboardEndpoint
     public static IEndpointRouteBuilder MapGetSellerDashboardEndpoint(
         this IEndpointRouteBuilder app)
     {
+
+
         app.MapGet(
             "/api/seller/dashboard",
             async (
                 int? days,
+                Guid? businessId,
                 ISender sender,
                 CancellationToken cancellationToken) =>
             {
                 var query = new GetSellerDashboardQuery(
-                    days ?? 30);
+                    days ?? 30,
+                    businessId);
 
                 var result = await sender.Send(
                     query,

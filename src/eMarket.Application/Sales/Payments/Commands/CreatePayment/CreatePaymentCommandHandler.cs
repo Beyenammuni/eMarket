@@ -150,6 +150,9 @@ internal sealed class CreatePaymentCommandHandler
 
         var payment = paymentResult.Value;
 
+        var callbackUrl =
+    $"{_configuration["Payments:OrderCallbackUrl"]}" +
+    $"?paymentId={payment.Id.Value}";
 
         if (payment is null)
         {
@@ -180,11 +183,13 @@ internal sealed class CreatePaymentCommandHandler
             : nameParts[0];
 
         var buyer = new PaymentBuyer(
-            _currentUser.UserId!.Value,
-            buyerName,
-            buyerSurname,
-            _currentUser.Email ?? string.Empty,
-            order.DeliveryAddress.PhoneNumber);
+    _currentUser.UserId!.Value,
+    buyerName,
+    buyerSurname,
+    _currentUser.Email ?? string.Empty,
+    order.DeliveryAddress.PhoneNumber,
+    "74300864791"
+);
 
         var merchant = new PaymentGatewayMerchant(
             business.IyzicoSubMerchantKey,
@@ -222,7 +227,7 @@ new PaymentGatewayRequest(
      PaymentGatewayPaymentType.Order,
     payment.Amount.Amount,
     payment.Amount.Currency.ToString(),
-    request.ReturnUrl,
+    callbackUrl,
     buyer,
     merchant,
     deliveryAddress,

@@ -21,9 +21,10 @@ internal sealed class GetSellerDashboardQueryHandler(
         var fromUtc = now.Date.AddDays(-(days - 1));
 
         var data = await repository.GetDashboardAsync(
-            fromUtc,
-            now,
-            cancellationToken);
+    fromUtc,
+    now,
+    request.BusinessId,
+    cancellationToken);
 
         return Result<SellerDashboardResponse>.Success(
             new SellerDashboardResponse(

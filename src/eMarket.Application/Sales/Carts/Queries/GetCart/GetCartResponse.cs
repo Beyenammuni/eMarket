@@ -13,4 +13,9 @@ public sealed record CartItemResponse(
     decimal UnitPrice,
     Currency Currency,
     int Quantity,
-    decimal TotalPrice);
+    decimal TotalPrice,
+    int StockQuantity,
+    string ProductStatus,
+    Guid BusinessId,
+    string Name,
+    string? ImageUrl);

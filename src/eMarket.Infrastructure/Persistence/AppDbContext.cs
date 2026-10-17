@@ -4,13 +4,14 @@ using eMarket.Domain.Businesses.Entities;
 using eMarket.Domain.Catalog.Categories;
 using eMarket.Domain.Catalog.Products;
 using eMarket.Domain.Identity;
+using eMarket.Domain.Identity.Entities;
 using eMarket.Domain.Payments;
 using eMarket.Domain.Sales.Carts;
 using eMarket.Domain.Sales.Orders;
 using eMarket.Domain.Subscriptions;
 using eMarket.Infrastructure.Persistence.Configurations.Identity;
-using Microsoft.EntityFrameworkCore;
 using eMarket.SharedKernel.Exceptions;
+using Microsoft.EntityFrameworkCore;
 
 namespace eMarket.Infrastructure.Persistence;
 
@@ -22,8 +23,9 @@ public sealed class AppDbContext : DbContext ,IBusinessDbContext,
         : base(options)
     {
     }
- 
+
     public DbSet<User> Users => Set<User>();
+    public DbSet<UserAddress> UserAddresses => Set<UserAddress>();
     public DbSet<Business> Businesses => Set<Business>();
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<Product> Products => Set<Product>();
@@ -36,7 +38,7 @@ public sealed class AppDbContext : DbContext ,IBusinessDbContext,
     public DbSet<Domain.Identity.Entities.UserCredential> UserCredentials => Set<Domain.Identity.Entities.UserCredential>();
     public DbSet<Domain.Identity.Entities.PasswordResetToken> PasswordResetTokens => Set<Domain.Identity.Entities.PasswordResetToken>();
     public DbSet<Domain.Identity.Entities.UserRoleAssignment> UserRoleAssignments => Set<Domain.Identity.Entities.UserRoleAssignment>();
-
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public override async Task<int> SaveChangesAsync(
         CancellationToken cancellationToken = default)
     {
@@ -52,7 +54,7 @@ public sealed class AppDbContext : DbContext ,IBusinessDbContext,
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        
+
         modelBuilder.ApplyConfiguration(new UserConfiguration());
         modelBuilder.ApplyConfigurationsFromAssembly(
             typeof(AppDbContext).Assembly);

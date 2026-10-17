@@ -38,17 +38,18 @@ internal sealed class CreateOrderCommandHandler
         CancellationToken cancellationToken)
     {
         var userId = _currentUser.UserId;
-
-        // 1. Get active cart
         var cart = await _cartRepository.GetActiveByUserAsync(
             userId,
             cancellationToken);
+
 
         if (cart is null)
         {
             return Result<CreateOrderResponse>.Failure(
                 OrderErrors.CartNotFound);
         }
+
+
 
         // 2. Cart must contain items
         if (!cart.Items.Any())
@@ -102,6 +103,8 @@ internal sealed class CreateOrderCommandHandler
                 return Result<CreateOrderResponse>.Failure(
                     OrderErrors.ProductNotAvailable);
             }
+            Console.WriteLine(
+    $"STOCK CHECK | ProductId={cartItem.ProductId.Value} | Stock={product.StockQuantity} | CartQuantity={cartItem.Quantity.Value}");
 
             // Check stock
             if (product.StockQuantity < cartItem.Quantity.Value)
@@ -149,7 +152,11 @@ internal sealed class CreateOrderCommandHandler
 
         // 6. Create Order
         // 6. Calculate shipping
-        var subtotal = products.Sum(x => x.Price.Amount);
+        var subtotal = products
+    .Select((product, index) =>
+        product.Price.Amount *
+        cart.Items.ElementAt(index).Quantity.Value)
+    .Sum();
 
         var shippingFee =
             business.FreeShippingThreshold.HasValue &&
@@ -200,14 +207,6 @@ internal sealed class CreateOrderCommandHandler
             }
         }
 
-        // 8. Checkout cart
-        var checkoutResult = cart.Checkout();
-
-        if (checkoutResult.IsFailure)
-        {
-            return Result<CreateOrderResponse>.Failure(
-                checkoutResult.Error);
-        }
 
         // 9. Add Order
         await _orderRepository.AddAsync(

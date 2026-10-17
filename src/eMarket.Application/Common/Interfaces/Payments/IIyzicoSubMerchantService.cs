@@ -5,6 +5,9 @@ public interface IIyzicoSubMerchantService
     Task<SubMerchantProvisioningResult> CreateAsync(
         Guid businessId,
         CancellationToken cancellationToken = default);
+    Task<SubMerchantProvisioningResult> UpdatePersonalSubMerchantAsync(
+        Guid businessId,
+        CancellationToken cancellationToken = default);
 }
 
 public sealed record SubMerchantProvisioningResult(

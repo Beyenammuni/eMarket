@@ -5,7 +5,8 @@ using eMarket.SharedKernel.Results;
 namespace eMarket.Application.Businesses.Queries.GetSellerDashboard;
 
 public sealed record GetSellerDashboardQuery(
-    int Days = 30)
+    int Days = 30,
+    Guid? BusinessId = null)
     : IRequest<Result<SellerDashboardResponse>>;
 
 public sealed record SellerDashboardResponse(

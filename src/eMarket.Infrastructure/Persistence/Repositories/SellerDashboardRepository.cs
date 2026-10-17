@@ -19,6 +19,7 @@ public sealed class SellerDashboardRepository(
     public async Task<SellerDashboardData> GetDashboardAsync(
         DateTime fromUtc,
         DateTime toUtc,
+        Guid? businessId = null,
         CancellationToken cancellationToken = default)
     {
         var userId = currentUser.UserId;
@@ -29,14 +30,30 @@ public sealed class SellerDashboardRepository(
         var today = DateTime.UtcNow.Date;
         var tomorrow = today.AddDays(1);
 
-        var businessIds = await context.BusinessMembers
+
+        var businessQuery = context.BusinessMembers
             .AsNoTracking()
             .Where(x =>
                 x.UserId == userId &&
-                x.IsActive)
+                x.IsActive);
+
+        if (businessId.HasValue)
+        {
+            businessQuery = businessQuery.Where(
+                x => x.BusinessId == businessId.Value);
+        }
+
+        var businessIds = await businessQuery
             .Select(x => x.BusinessId)
             .Distinct()
             .ToListAsync(cancellationToken);
+
+        if (businessId.HasValue && businessIds.Count == 0)
+        {
+            throw new UnauthorizedAccessException(
+                "You are not authorized to access this business.");
+        }
+
 
 
         var totalBusinesses = businessIds.Count;

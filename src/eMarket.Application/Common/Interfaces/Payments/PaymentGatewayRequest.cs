@@ -24,7 +24,8 @@ public sealed record PaymentBuyer(
     string Name,
     string Surname,
     string Email,
-    string Phone);
+    string Phone,
+    string IdentityNumber);
 
 public sealed record PaymentGatewayMerchant(
     string SubMerchantKey,
@@ -41,8 +42,8 @@ public sealed record PaymentGatewayAddress(
     string Street,
     string BuildingNumber,
     string ApartmentNumber,
-    decimal Latitude,
-    decimal Longitude);
+    decimal? Latitude,
+    decimal? Longitude);
 
 public sealed record PaymentGatewayItem(
     Guid ProductId,

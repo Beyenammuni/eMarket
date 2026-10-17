@@ -169,12 +169,12 @@ public sealed class OrderConfiguration
                     .IsRequired();
 
                 address.Property(x => x.Latitude)
-                    .HasPrecision(9, 6)
-                    .IsRequired();
+     .HasPrecision(9, 6)
+     .IsRequired(false);
 
                 address.Property(x => x.Longitude)
                     .HasPrecision(9, 6)
-                    .IsRequired();
+                    .IsRequired(false);
             });
 
         builder.Ignore(x => x.DomainEvents);

@@ -1,8 +1,9 @@
 using eMarket.Api.Common;
-using eMarket.Application.Businesses.Commands.UpdateBusiness;
-using MediatR;
 using eMarket.Api.Common.Authorization;
+using eMarket.Application.Businesses.Commands.UpdateBusiness;
 using eMarket.Application.Common.Authorization;
+using MediatR;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 
 namespace eMarket.Api.Endpoints.Businesses.Commands
 {
@@ -18,10 +19,21 @@ namespace eMarket.Api.Endpoints.Businesses.Commands
     ISender sender,
     CancellationToken cancellationToken) =>
     {
-        var command = new UpdateBusinessCommand(
-            businessId,
-            request.Name,
-            request.Type);
+var command = new UpdateBusinessCommand(
+    businessId,
+    request.Name,
+    request.Type,
+    request.Email,
+    request.PhoneNumber,
+    request.Address,
+    request.City,
+    request.Country,
+    request.LegalName,
+    request.IdentityNumber,
+    request.TaxNumber,
+    request.TaxOffice);
+
+
 
         var result = await sender.Send(command, cancellationToken);
 

@@ -64,7 +64,7 @@ public static class DependencyInjection
         services.AddScoped<IPaymentRepository, PaymentRepository>();
         services.AddScoped<IBusinessRepository, BusinessRepository>();
         services.AddScoped<ISellerDashboardRepository, SellerDashboardRepository>();
-
+        services.AddScoped<IRefreshTokenService, RefreshTokenService>();
         services.AddSingleton<ISubMerchantProvisioningQueue,
     SubMerchantProvisioningQueue>();
 
@@ -93,6 +93,7 @@ public static class DependencyInjection
 
         services.AddScoped<IAdminDashboardRepository,
             AdminDashboardRepository>();
+        services.AddScoped<IUserAddressRepository, UserAddressRepository>();
 
         // Payment provider
         var paymentProvider =

@@ -1,3 +1,4 @@
+using eMarket.Application.Common.Interfaces;
 using eMarket.Application.Common.Interfaces.Payments;
 using eMarket.Application.Common.IRepositories;
 using eMarket.Domain.Businesses;
@@ -14,13 +15,15 @@ internal sealed class IyzicoSubMerchantService
 {
     private readonly IBusinessRepository _businessRepository;
     private readonly IyzicoOptions _options;
-
+    private readonly IUnitOfWork _unitOfWork;
     public IyzicoSubMerchantService(
         IBusinessRepository businessRepository,
-        IOptions<IyzicoOptions> options)
+        IOptions<IyzicoOptions> options,
+        IUnitOfWork unitOfWork)
     {
         _businessRepository = businessRepository;
         _options = options.Value;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<SubMerchantProvisioningResult> CreateAsync(
@@ -99,29 +102,55 @@ internal sealed class IyzicoSubMerchantService
 
         try
         {
-           
+
             var response =
                 await SubMerchant.Create(
                     request,
                     options);
 
+
             if (!string.Equals(
-        response.Status,
-        Status.SUCCESS.ToString(),
-        StringComparison.OrdinalIgnoreCase))
+                response.Status,
+                Status.SUCCESS.ToString(),
+                StringComparison.OrdinalIgnoreCase))
             {
                 return new SubMerchantProvisioningResult(
                     false,
                     null,
                     response.Status,
-                    $"iyzico error. Code: {response.ErrorCode}, " +
-                    $"Message: {response.ErrorMessage}");
+                    $"iyzico sub-merchant creation failed: {response.ErrorCode} - {response.ErrorMessage}");
             }
+
+            if (string.IsNullOrWhiteSpace(response.SubMerchantKey))
+            {
+                return new SubMerchantProvisioningResult(
+                    false,
+                    null,
+                    response.Status,
+                    "iyzico returned SUCCESS without a SubMerchantKey.");
+            }
+
+            var setResult = business.SetIyzicoSubMerchant(
+                response.SubMerchantKey,
+                response.Status);
+
+            if (setResult.IsFailure)
+            {
+                return new SubMerchantProvisioningResult(
+                    false,
+                    null,
+                    response.Status,
+                    setResult.Error.Description);
+            }
+
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+
             return new SubMerchantProvisioningResult(
                 true,
                 response.SubMerchantKey,
                 response.Status,
                 null);
+
         }
         catch (Exception ex)
         {
@@ -183,5 +212,87 @@ internal sealed class IyzicoSubMerchantService
             ? parts[^1]
             : legalName;
     }
+
+    public async Task<SubMerchantProvisioningResult> UpdatePersonalSubMerchantAsync(
+        Guid businessId,
+        CancellationToken cancellationToken = default)
+    {
+        var business = await _businessRepository.GetByIdAsync(
+            BusinessId.Create(businessId),
+            cancellationToken);
+
+        if (business is null)
+        {
+            return new SubMerchantProvisioningResult(
+                false, null, null, "Business was not found.");
+        }
+
+        var merchant = business.MerchantDetails;
+
+        if (merchant.MerchantType != MerchantType.Personal)
+        {
+            return new SubMerchantProvisioningResult(
+                false, null, null,
+                "This method is only for personal sub-merchants.");
+        }
+
+        if (string.IsNullOrWhiteSpace(business.IyzicoSubMerchantKey))
+        {
+            return new SubMerchantProvisioningResult(
+                false, null, null,
+                "SubMerchantKey is missing.");
+        }
+
+        if (string.IsNullOrWhiteSpace(merchant.IdentityNumber))
+        {
+            return new SubMerchantProvisioningResult(
+                false, null, null,
+                "IdentityNumber is missing in the database.");
+        }
+
+        var options = new Iyzipay.Options
+        {
+            ApiKey = _options.ApiKey,
+            SecretKey = _options.SecretKey,
+            BaseUrl = _options.BaseUrl
+        };
+
+        var request = new UpdateSubMerchantRequest
+        {
+            Locale = Locale.TR.ToString(),
+            ConversationId = business.Id.Value.ToString(),
+            SubMerchantKey = business.IyzicoSubMerchantKey,
+            Address = merchant.Address,
+            ContactName = GetContactName(merchant.LegalName),
+            ContactSurname = GetContactSurname(merchant.LegalName),
+            Email = merchant.Email,
+            GsmNumber = merchant.PhoneNumber,
+            Name = merchant.LegalName,
+            Iban = merchant.Iban,
+            IdentityNumber = merchant.IdentityNumber,
+            Currency = Currency.TRY.ToString()
+        };
+
+        var response = await SubMerchant.Update(request, options);
+
+        if (!string.Equals(
+            response.Status,
+            Status.SUCCESS.ToString(),
+            StringComparison.OrdinalIgnoreCase))
+        {
+            return new SubMerchantProvisioningResult(
+                false,
+                null,
+                response.Status,
+                $"{response.ErrorCode}: {response.ErrorMessage}");
+        }
+
+        return new SubMerchantProvisioningResult(
+            true,
+            response.SubMerchantKey,
+            response.Status,
+            null);
+    }
+
 }
 

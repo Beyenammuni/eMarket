@@ -185,4 +185,85 @@ public sealed class BusinessMerchantDetails : ValueObject
             .Trim()
             .Replace(" ", string.Empty)
             .ToUpperInvariant();
+public Result<BusinessMerchantDetails> UpdateContactDetails(
+    string email,
+    string phoneNumber,
+    string address,
+    string city,
+    string country)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            return Result<BusinessMerchantDetails>.Failure(
+                new Error(
+                    "BusinessMerchantDetails.InvalidEmail",
+                    "Email is required."));
+        }
+
+        if (string.IsNullOrWhiteSpace(phoneNumber))
+        {
+            return Result<BusinessMerchantDetails>.Failure(
+                new Error(
+                    "BusinessMerchantDetails.InvalidPhoneNumber",
+                    "Phone number is required."));
+        }
+
+        if (string.IsNullOrWhiteSpace(address))
+        {
+            return Result<BusinessMerchantDetails>.Failure(
+                new Error(
+                    "BusinessMerchantDetails.InvalidAddress",
+                    "Address is required."));
+        }
+
+        if (string.IsNullOrWhiteSpace(city))
+        {
+            return Result<BusinessMerchantDetails>.Failure(
+                new Error(
+                    "BusinessMerchantDetails.InvalidCity",
+                    "City is required."));
+        }
+
+        if (string.IsNullOrWhiteSpace(country))
+        {
+            return Result<BusinessMerchantDetails>.Failure(
+                new Error(
+                    "BusinessMerchantDetails.InvalidCountry",
+                    "Country is required."));
+        }
+
+        return Create(
+            MerchantType,
+            LegalName,
+            IdentityNumber,
+            TaxNumber,
+            TaxOffice,
+            email,
+            phoneNumber,
+            address,
+            city,
+            country,
+            Iban);
+    }
+public Result<BusinessMerchantDetails> UpdateLegalDetails(
+    string legalName,
+    string? identityNumber,
+    string? taxNumber,
+    string? taxOffice)
+    {
+        return Create(
+            MerchantType,
+            legalName,
+            identityNumber,
+            taxNumber,
+            taxOffice,
+            Email,
+            PhoneNumber,
+            Address,
+            City,
+            Country,
+            Iban);
+    }
+
+
 }

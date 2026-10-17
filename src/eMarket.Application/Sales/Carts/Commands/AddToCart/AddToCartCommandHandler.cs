@@ -34,6 +34,7 @@ internal sealed class AddToCartCommandHandler
       CancellationToken cancellationToken)
     {
         var userId = _currentUser.UserId;
+        Console.WriteLine($"ADD TO CART USER ID: {userId}");
         if (userId is null)
         {
             return Result.Failure(

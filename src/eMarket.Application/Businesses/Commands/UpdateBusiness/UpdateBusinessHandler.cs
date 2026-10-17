@@ -57,21 +57,51 @@ internal sealed class UpdateBusinessHandler
                 BusinessErrors.NotFound);
         }
 
-        var result = business.Update(
-            BusinessName.Create(request.Name),
-            Enumeration.FromValue<BusinessType>(request.Type));
+var result = business.Update(
+    BusinessName.Create(request.Name),
+    Enumeration.FromValue<BusinessType>(request.Type));
 
         if (result.IsFailure)
         {
             return Result<UpdateBusinessResponse>.Failure(result.Error);
         }
 
+        var contactResult = business.UpdateContactDetails(
+            request.Email,
+            request.PhoneNumber,
+            request.Address,
+            request.City,
+            request.Country);
+
+        if (contactResult.IsFailure)
+        {
+            return Result<UpdateBusinessResponse>.Failure(contactResult.Error);
+        }
+
+var legalResult = business.UpdateLegalDetails(
+    request.LegalName,
+    request.IdentityNumber,
+    request.TaxNumber,
+    request.TaxOffice);
+
+        if (legalResult.IsFailure)
+        {
+            return Result<UpdateBusinessResponse>.Failure(legalResult.Error);
+        }
+
+
+
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return Result<UpdateBusinessResponse>.Success(
-            new UpdateBusinessResponse(
-                business.Id.Value,
-                business.Name.Value,
-                business.Type.Name));
+return Result<UpdateBusinessResponse>.Success(
+    new UpdateBusinessResponse(
+        business.Id.Value,
+        business.Name.Value,
+        business.Type.Name,
+        business.MerchantDetails.LegalName,
+        business.MerchantDetails.IdentityNumber,
+        business.MerchantDetails.TaxNumber,
+        business.MerchantDetails.TaxOffice));
+
     }
 }

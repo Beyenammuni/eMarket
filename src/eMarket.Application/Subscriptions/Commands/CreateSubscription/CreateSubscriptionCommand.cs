@@ -17,8 +17,8 @@ public sealed record CreateSubscriptionCommand(
     string Street,
     string BuildingNumber,
     string ApartmentNumber,
-    decimal Latitude,
-    decimal Longitude,
+    decimal? Latitude,
+    decimal? Longitude,
     IReadOnlyCollection<SubscriptionItemRequest> Items)
     : IRequest<Result<CreateSubscriptionResponse>>;
 

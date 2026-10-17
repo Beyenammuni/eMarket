@@ -29,12 +29,22 @@ internal sealed class GetMySubscriptionQueryHandler : IRequestHandler<GetMySubsc
         if(s is null)
             return Result<GetMySubscriptionResponse>
                 .Failure(SubscriptionErrors.NotFound);
-             return Result<GetMySubscriptionResponse>
-            .Success(new ( s.Id.Value,
-            s.BusinessId.Value,
-            s.DeliveryDay,
-            s.NextDeliveryDate,
-            s.Status.ToString(),
-            s.Items.Select(i=>new SubscriptionItemResponse(i.ProductId.Value,i.Quantity)).ToList()));
-        }
+
+        return Result<GetMySubscriptionResponse>
+.Success(new(
+   s.Id.Value,
+   s.BusinessId.Value,
+   s.DeliveryDay,
+   s.NextDeliveryDate,
+   s.Status.ToString(),
+   s.WeeklyProductAmount,
+   s.WeeklyShippingAmount,
+   s.WeeklyTotalAmount,
+   s.MonthlyAmount,
+   s.Items.Select(i =>
+       new SubscriptionItemResponse(
+           i.ProductId.Value,
+           i.Quantity))
+       .ToList()));
+    }
 }

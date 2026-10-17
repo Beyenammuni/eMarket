@@ -1,4 +1,5 @@
 using eMarket.Application.Common.Interfaces;
+using eMarket.Application.Common.IRepositories;
 using eMarket.Domain.Businesses;
 using eMarket.Domain.Catalog.Products;
 using eMarket.Domain.Subscriptions;
@@ -15,15 +16,17 @@ internal sealed class CreateSubscriptionCommandHandler
     private readonly ISubscriptionDbContext _context;
     private readonly ICatalogDbContext _catalog;
     private readonly ICurrentUser _currentUser;
-
+    private readonly IBusinessRepository _businessRepository;
     public CreateSubscriptionCommandHandler(
         ISubscriptionDbContext context,
         ICatalogDbContext catalog,
-        ICurrentUser currentUser)
+        ICurrentUser currentUser,
+        IBusinessRepository businessRepository)
     {
         _context = context;
         _catalog = catalog;
         _currentUser = currentUser;
+        _businessRepository = businessRepository;
     }
 
     public async Task<Result<CreateSubscriptionResponse>> Handle(
@@ -62,6 +65,60 @@ internal sealed class CreateSubscriptionCommandHandler
             return Result<CreateSubscriptionResponse>.Failure(
                 SubscriptionErrors.DifferentBusinesses);
         }
+        var weeklyProductAmount = 0m;
+
+        foreach (var item in request.Items)
+        {
+            var product = products.FirstOrDefault(
+                x => x.Id == ProductId.Create(item.ProductId));
+
+            if (product is null)
+            {
+                return Result<CreateSubscriptionResponse>.Failure(
+                    SubscriptionErrors.DifferentBusinesses);
+            }
+
+            if (product.Price.Amount <= 0)
+            {
+                return Result<CreateSubscriptionResponse>.Failure(
+                    new Error(
+                        "Subscription.InvalidProductPrice",
+                        $"Product {product.Id.Value} has an invalid price."));
+            }
+
+            if (item.Quantity <= 0)
+            {
+                return Result<CreateSubscriptionResponse>.Failure(
+                    SubscriptionErrors.InvalidQuantity);
+            }
+
+            weeklyProductAmount +=
+                product.Price.Amount * item.Quantity;
+        }
+
+        var business =
+            await _businessRepository.GetByIdAsync(
+                businessId,
+                cancellationToken);
+
+        if (business is null)
+        {
+            return Result<CreateSubscriptionResponse>.Failure(
+                new Error(
+                    "Subscription.BusinessNotFound",
+                    "The business associated with the subscription was not found."));
+        }
+
+        var weeklyShippingAmount = business.ShippingFee;
+
+if (!business.SupportsSubscriptions)
+        {
+            return Result<CreateSubscriptionResponse>.Failure(
+                new Error(
+                    "Subscription.NotSupported",
+                    "This business does not support subscriptions."));
+        }
+
 
         var addressResult = SubscriptionDeliveryAddress.Create(
             request.FullName,
@@ -100,6 +157,16 @@ internal sealed class CreateSubscriptionCommandHandler
 
         var subscription = result.Value!;
 
+        var pricingResult = subscription.SetPricing(
+    weeklyProductAmount,
+    weeklyShippingAmount);
+
+        if (pricingResult.IsFailure)
+        {
+            return Result<CreateSubscriptionResponse>.Failure(
+                pricingResult.Error);
+        }
+
         foreach (var item in request.Items)
         {
             var addResult = subscription.AddOrUpdateItem(
@@ -122,10 +189,14 @@ internal sealed class CreateSubscriptionCommandHandler
 
         return Result<CreateSubscriptionResponse>.Success(
             new(
-                subscription.Id.Value,
-                businessId.Value,
-                subscription.DeliveryDay,
-                subscription.NextDeliveryDate,
-                subscription.Status.ToString()));
+    subscription.Id.Value,
+    businessId.Value,
+    subscription.DeliveryDay,
+    subscription.NextDeliveryDate,
+    subscription.Status.ToString(),
+    subscription.WeeklyProductAmount,
+    subscription.WeeklyShippingAmount,
+    subscription.WeeklyTotalAmount,
+    subscription.MonthlyAmount));
     }
 }

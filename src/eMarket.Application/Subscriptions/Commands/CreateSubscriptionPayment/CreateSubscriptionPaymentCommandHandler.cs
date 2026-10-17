@@ -31,7 +31,7 @@ internal sealed class CreateSubscriptionPaymentCommandHandler
         IBusinessRepository businessRepository,
         IPaymentRepository paymentRepository,
         ISubscriptionPaymentGateway subscriptionPaymentGateway,
-        
+
         IUnitOfWork unitOfWork,
         ICurrentUser currentUser,
         IConfiguration configuration)
@@ -122,11 +122,9 @@ internal sealed class CreateSubscriptionPaymentCommandHandler
             return Result<CreateSubscriptionPaymentResponse>.Failure(
                 SubscriptionErrors.EmptyBasket);
         }
-
-        // Get products belonging to the subscription business.
         var productIds = subscription.Items
-            .Select(x => x.ProductId)
-            .ToList();
+    .Select(x => x.ProductId)
+    .ToList();
 
         var products = await _catalog.Products
             .Where(x =>
@@ -141,34 +139,7 @@ internal sealed class CreateSubscriptionPaymentCommandHandler
                 SubscriptionErrors.DifferentBusinesses);
         }
 
-        // Calculate weekly basket value.
-        decimal weeklyAmount = 0m;
-
-        foreach (var subscriptionItem in subscription.Items)
-        {
-            var product = products.First(
-                x => x.Id == subscriptionItem.ProductId);
-
-            if (product.Price.Amount <= 0)
-            {
-                return Result<CreateSubscriptionPaymentResponse>.Failure(
-                    new Error(
-                        "Subscription.InvalidProductPrice",
-                        $"Product {product.Id.Value} has an invalid price."));
-            }
-
-            weeklyAmount +=
-                product.Price.Amount *
-                subscriptionItem.Quantity;
-        }
-
-        // Monthly price:
-        // weekly basket × 52 weeks ÷ 12 months.
-        var monthlyAmount =
-            Math.Round(
-                weeklyAmount * 52m / 12m,
-                2,
-                MidpointRounding.AwayFromZero);
+        var monthlyAmount = subscription.MonthlyAmount;
 
         if (monthlyAmount <= 0)
         {
@@ -198,43 +169,87 @@ internal sealed class CreateSubscriptionPaymentCommandHandler
         //            "The business is not configured for marketplace payments."));
         //}
 
-        // Prevent duplicate pending/succeeded subscription payments.
+        var currencies = products
+     .Select(x => x.Price.Currency)
+     .Distinct()
+     .ToList();
+
+        if (currencies.Count != 1)
+        {
+            return Result<CreateSubscriptionPaymentResponse>.Failure(
+                new Error(
+                    "Subscription.MixedCurrencies",
+                    "Subscription products must use the same currency."));
+        }
+
+        var currency = currencies[0];
+
         var existingPayment =
             await _paymentRepository.GetBySubscriptionIdAsync(
                 subscription.Id.Value,
                 cancellationToken);
 
-        if (existingPayment is not null &&
-            existingPayment.Status != PaymentStatus.Failed)
+        Payment payment;
+
+        if (existingPayment is not null)
         {
-            return Result<CreateSubscriptionPaymentResponse>.Failure(
-                PaymentErrors.AlreadyExists);
+            if (existingPayment.Status == PaymentStatus.Succeeded)
+            {
+                return Result<CreateSubscriptionPaymentResponse>.Failure(
+                    PaymentErrors.AlreadyExists);
+            }
+
+            if (existingPayment.Status == PaymentStatus.Pending)
+            {
+                payment = existingPayment;
+            }
+            else
+            {
+                var paymentResult = Payment.Create(
+                    null,
+                    subscription.Id.Value,
+                    eMarket.Domain.Catalog.Products.ValueObjects.Money.Create(
+                        monthlyAmount,
+                        currency),
+                    PaymentMethod.Card,
+                    business.PlatformCommissionRate);
+
+                if (paymentResult.IsFailure)
+                {
+                    return Result<CreateSubscriptionPaymentResponse>.Failure(
+                        paymentResult.Error);
+                }
+
+                payment = paymentResult.Value!;
+
+                await _paymentRepository.AddAsync(
+                    payment,
+                    cancellationToken);
+            }
         }
-
-        var currency = products
-            .Select(x => x.Price.Currency)
-            .First();
-
-        var paymentResult = Payment.Create(
-            null,
-            subscription.Id.Value,
-            eMarket.Domain.Catalog.Products.ValueObjects.Money.Create(
-                monthlyAmount,
-                currency),
-            PaymentMethod.Card,
-            business.PlatformCommissionRate);
-
-        if (paymentResult.IsFailure)
+        else
         {
-            return Result<CreateSubscriptionPaymentResponse>.Failure(
-                paymentResult.Error);
+            var paymentResult = Payment.Create(
+                null,
+                subscription.Id.Value,
+                eMarket.Domain.Catalog.Products.ValueObjects.Money.Create(
+                    monthlyAmount,
+                    currency),
+                PaymentMethod.Card,
+                business.PlatformCommissionRate);
+
+            if (paymentResult.IsFailure)
+            {
+                return Result<CreateSubscriptionPaymentResponse>.Failure(
+                    paymentResult.Error);
+            }
+
+            payment = paymentResult.Value!;
+
+            await _paymentRepository.AddAsync(
+                payment,
+                cancellationToken);
         }
-
-        var payment = paymentResult.Value!;
-
-        await _paymentRepository.AddAsync(
-            payment,
-            cancellationToken);
 
         var fullName =
             subscription.DeliveryAddress.FullName.Trim();
@@ -260,7 +275,8 @@ internal sealed class CreateSubscriptionPaymentCommandHandler
             buyerName,
             buyerSurname,
             _currentUser.Email ?? string.Empty,
-            subscription.DeliveryAddress.PhoneNumber);
+            subscription.DeliveryAddress.PhoneNumber,
+            string.Empty);
 
         var merchant = new PaymentGatewayMerchant(
         business.IyzicoSubMerchantKey,
@@ -295,19 +311,22 @@ internal sealed class CreateSubscriptionPaymentCommandHandler
             })
             .ToList();
 
+        var callbackUrl =
+    $"{request.ReturnUrl}?paymentId={payment.Id.Value}";
+
         var gatewayResult =
     await _subscriptionPaymentGateway.CreateCheckoutFormAsync(
         new SubscriptionPaymentGatewayRequest(
             payment.Id.Value,
             payment.Amount.Amount,
             payment.Amount.Currency.ToString(),
-            request.ReturnUrl,
+            callbackUrl,
             new SubscriptionPaymentBuyer(
                 buyer.Name,
                 buyer.Surname,
                 buyer.Email,
                 buyer.Phone,
-                string.Empty),
+                "74300864791"),
             new SubscriptionPaymentAddress(
                 deliveryAddress.FullName,
                 deliveryAddress.PhoneNumber,

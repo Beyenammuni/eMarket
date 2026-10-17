@@ -15,12 +15,15 @@ public static class BusinessEndpoints
         app.MapTransferOwnershipEndpoint();
         app.MapUpdateBusinessEndpoint();
         app.MapSelectBusinessEndpoint();
+        app.MapGetActiveBusinessesEndpoint();
+        app.MapSuspendBusinessEndpoint();
+        app.MapActivateBusinessEndpoint();
+        app.MapSetBusinessSubscriptionSupportEndpoint();
         // Queries
         app.MapGetAvailableBusinessMembers();
         app.MapGetBusinessByIdEndpoint();
         app.MapGetMyBusinessesEndpoint();
         app.MapMapGetBusinessMembersEndpoint();
-        app.MapGetActiveBusinessesEndpoint();
         return app;
     }
 }

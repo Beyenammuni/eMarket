@@ -18,6 +18,6 @@ public sealed class UpdateBusinessValidator
             .MaximumLength(100);
 
         RuleFor(x => x.Type)
-            .InclusiveBetween(1, 5);
+            .InclusiveBetween(1, 20);
     }
 }

@@ -23,5 +23,5 @@ public sealed record DeliveryAddressResponse(
     string Street,
     string BuildingNumber,
     string ApartmentNumber,
-    decimal Latitude,
-    decimal Longitude);
+    decimal? Latitude,
+    decimal? Longitude);

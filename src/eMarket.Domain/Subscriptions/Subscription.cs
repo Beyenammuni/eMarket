@@ -25,7 +25,7 @@ public sealed class Subscription : AggregateRoot<SubscriptionId>
 
         CurrentPeriodEnd = CurrentPeriodStart.AddMonths(1);
         BillingCycle = SubscriptionBillingCycle.Monthly;
-        Status = SubscriptionStatus.Active;
+        Status = SubscriptionStatus.PendingPayment;
         CreatedAt = DateTime.UtcNow;
 
     }
@@ -43,6 +43,14 @@ public sealed class Subscription : AggregateRoot<SubscriptionId>
     public byte[] RowVersion { get; private set; } = [];
     public DateTime? CancelledAt { get; private set; }
     public Guid? LastGeneratedOrderId { get; private set; }
+    public string? IyzicoSubscriptionReferenceCode { get; private set; }
+    public decimal WeeklyProductAmount { get; private set; }
+
+    public decimal WeeklyShippingAmount { get; private set; }
+
+    public decimal WeeklyTotalAmount { get; private set; }
+
+    public decimal MonthlyAmount { get; private set; }
     public SubscriptionStatus Status { get; private set; }
     public IReadOnlyCollection<SubscriptionItem> Items => _items.AsReadOnly();
 
@@ -60,7 +68,7 @@ public sealed class Subscription : AggregateRoot<SubscriptionId>
             userId,
             businessId,
             deliveryDay,
-            nextDeliveryDate,             
+            nextDeliveryDate,
             deliveryAddress);
         return Result<Subscription>.Success(subscription);
     }
@@ -77,27 +85,56 @@ public sealed class Subscription : AggregateRoot<SubscriptionId>
         return Result.Success();
     }
 
-    public Result RemoveItem(ProductId productId)
-    {
-        var item = _items.FirstOrDefault(x => x.ProductId == productId);
-        if (item is null) return Result.Success();
-        _items.Remove(item);
-        if (_items.Count == 0)
-            return Result.Failure(SubscriptionErrors.EmptyBasket);
-        UpdatedAt = DateTime.UtcNow;
-        return Result.Success();
-    }
 
-    public Result ReplaceItems(IEnumerable<(ProductId ProductId, int Quantity)> items)
+public Result RemoveItem(ProductId productId)
+{
+    var item = _items.FirstOrDefault(x => x.ProductId == productId);
+
+    if (item is null)
+        return Result.Success();
+
+    if (_items.Count == 1)
+        return Result.Failure(SubscriptionErrors.EmptyBasket);
+
+    _items.Remove(item);
+    UpdatedAt = DateTime.UtcNow;
+
+    return Result.Success();
+}
+
+
+
+    public Result ReplaceItems(
+        IEnumerable<(ProductId ProductId, int Quantity)> items)
     {
         var materialized = items.ToList();
+
         if (materialized.Count == 0)
             return Result.Failure(SubscriptionErrors.EmptyBasket);
+
         if (materialized.Any(x => x.Quantity <= 0))
             return Result.Failure(SubscriptionErrors.InvalidQuantity);
+
+        if (materialized
+            .GroupBy(x => x.ProductId)
+            .Any(group => group.Count() > 1))
+        {
+            return Result.Failure(
+                new Error(
+                    "Subscription.DuplicateProduct",
+                    "A product cannot appear more than once."));
+        }
+
         _items.Clear();
-        foreach (var item in materialized) _items.Add(new SubscriptionItem(item.ProductId, item.Quantity));
+
+        foreach (var item in materialized)
+        {
+            _items.Add(
+                new SubscriptionItem(item.ProductId, item.Quantity));
+        }
+
         UpdatedAt = DateTime.UtcNow;
+
         return Result.Success();
     }
 
@@ -135,10 +172,72 @@ public sealed class Subscription : AggregateRoot<SubscriptionId>
         UpdatedAt = DateTime.UtcNow;
         return Result.Success();
     }
+    public Result SetPricing(
+    decimal weeklyProductAmount,
+    decimal weeklyShippingAmount)
+    {
+        if (weeklyProductAmount <= 0)
+            return Result.Failure(
+                new Error(
+                    "Subscription.InvalidProductAmount",
+                    "Weekly product amount must be greater than zero."));
+
+        if (weeklyShippingAmount < 0)
+            return Result.Failure(
+                new Error(
+                    "Subscription.InvalidShippingAmount",
+                    "Weekly shipping amount cannot be negative."));
+
+        WeeklyProductAmount = Math.Round(
+            weeklyProductAmount,
+            2,
+            MidpointRounding.AwayFromZero);
+
+        WeeklyShippingAmount = Math.Round(
+            weeklyShippingAmount,
+            2,
+            MidpointRounding.AwayFromZero);
+
+        WeeklyTotalAmount = Math.Round(
+            WeeklyProductAmount + WeeklyShippingAmount,
+            2,
+            MidpointRounding.AwayFromZero);
+
+        MonthlyAmount = Math.Round(
+            WeeklyTotalAmount * 52m / 12m,
+            2,
+            MidpointRounding.AwayFromZero);
+
+        UpdatedAt = DateTime.UtcNow;
+
+        return Result.Success();
+    }
+
+    public Result SetIyzicoSubscriptionReference(
+     string referenceCode)
+    {
+        if (string.IsNullOrWhiteSpace(referenceCode))
+            return Result.Failure(
+                SubscriptionErrors.NotActive);
+
+        IyzicoSubscriptionReferenceCode =
+            referenceCode.Trim();
+
+        UpdatedAt = DateTime.UtcNow;
+
+        return Result.Success();
+    }
     public Result Activate()
     {
         if (Status == SubscriptionStatus.Cancelled)
-            return Result.Failure(SubscriptionErrors.AlreadyCancelled);
+            return Result.Failure(
+                SubscriptionErrors.AlreadyCancelled);
+
+        if (Status != SubscriptionStatus.PendingPayment)
+            return Result.Failure(
+                new Error(
+                    "Subscription.InvalidActivation",
+                    "Only subscriptions pending payment can be activated."));
 
         Status = SubscriptionStatus.Active;
 

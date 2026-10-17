@@ -8,6 +8,10 @@ public interface ISubscriptionPaymentGateway
 
     Task<string> TestListProductsAsync(
     CancellationToken cancellationToken = default);
+
+    Task<SubscriptionCheckoutResult> GetCheckoutResultAsync(
+    string token,
+    CancellationToken cancellationToken = default);
 }
 
 public sealed record SubscriptionPaymentGatewayRequest(
@@ -41,4 +45,13 @@ public sealed record SubscriptionPaymentGatewayResult(
     bool IsSuccess,
     string? CheckoutFormContent,
     string? Token,
+    string? Error);
+
+public sealed record SubscriptionCheckoutResult(
+    bool IsSuccess,
+    Guid? PaymentId,
+    string? SubscriptionReferenceCode,
+    string? PricingPlanReferenceCode,
+    string? CustomerReferenceCode,
+    string? SubscriptionStatus,
     string? Error);

@@ -55,6 +55,8 @@ public sealed class Business : AggregateRoot<BusinessId>
 
     public DateTime CreatedAt { get; private set; }
 
+    public bool SupportsSubscriptions { get; private set; } = false;
+
     public IReadOnlyCollection<BusinessMember> Members =>
         _members.AsReadOnly();
 
@@ -356,6 +358,55 @@ public sealed class Business : AggregateRoot<BusinessId>
                 currentOwnerId,
                 newOwnerId));
 
+        return Result.Success();
+    }
+public Result UpdateContactDetails(
+    string email,
+    string phoneNumber,
+    string address,
+    string city,
+    string country)
+    {
+        var result = MerchantDetails.UpdateContactDetails(
+            email,
+            phoneNumber,
+            address,
+            city,
+            country);
+
+        if (result.IsFailure)
+        {
+            return Result.Failure(result.Error);
+        }
+
+        MerchantDetails = result.Value;
+
+        return Result.Success();
+    }
+public Result UpdateLegalDetails(
+    string legalName,
+    string? identityNumber,
+    string? taxNumber,
+    string? taxOffice)
+    {
+        var result = MerchantDetails.UpdateLegalDetails(
+            legalName,
+            identityNumber,
+            taxNumber,
+            taxOffice);
+
+        if (result.IsFailure)
+        {
+            return Result.Failure(result.Error);
+        }
+
+        MerchantDetails = result.Value;
+        return Result.Success();
+    }
+
+    public Result SetSubscriptionSupport(bool enabled)
+    {
+        SupportsSubscriptions = enabled;
         return Result.Success();
     }
 
