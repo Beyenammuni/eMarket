@@ -22,7 +22,8 @@ internal sealed class CreatePaymentCommandHandler
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUser _currentUser;
     private readonly IConfiguration _configuration;
-
+    private readonly IUserRepository _userRepository;
+    private readonly ICustomerIdentityProtector _identityProtector;
     public CreatePaymentCommandHandler(
         IOrderRepository orderRepository,
         IBusinessRepository businessRepository,
@@ -30,7 +31,9 @@ internal sealed class CreatePaymentCommandHandler
         IPaymentGateway paymentGateway,
         IUnitOfWork unitOfWork,
         ICurrentUser currentUser,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IUserRepository userRepository,
+        ICustomerIdentityProtector identityProtector)
     {
         _orderRepository = orderRepository;
         _businessRepository = businessRepository;
@@ -39,6 +42,8 @@ internal sealed class CreatePaymentCommandHandler
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _configuration = configuration;
+        _userRepository = userRepository;
+        _identityProtector = identityProtector;
     }
 
     public async Task<Result<CreatePaymentResponse>> Handle(
@@ -181,6 +186,33 @@ internal sealed class CreatePaymentCommandHandler
         var buyerSurname = nameParts.Length > 1
             ? nameParts[^1]
             : nameParts[0];
+        var user = await _userRepository.GetByIdAsync(
+    _currentUser.UserId,
+    cancellationToken);
+
+        if (user is null ||
+            string.IsNullOrWhiteSpace(user.EncryptedIdentityNumber))
+        {
+            return Result<CreatePaymentResponse>.Failure(
+                new Error(
+                    "Payment.CustomerIdentityRequired",
+                    "Please provide your identity number before payment."));
+        }
+
+        string identityNumber;
+
+        try
+        {
+            identityNumber = _identityProtector.Unprotect(
+                user.EncryptedIdentityNumber);
+        }
+        catch
+        {
+            return Result<CreatePaymentResponse>.Failure(
+                new Error(
+                    "Payment.CustomerIdentityUnavailable",
+                    "Customer identity could not be verified."));
+        }
 
         var buyer = new PaymentBuyer(
     _currentUser.UserId!.Value,
@@ -188,7 +220,7 @@ internal sealed class CreatePaymentCommandHandler
     buyerSurname,
     _currentUser.Email ?? string.Empty,
     order.DeliveryAddress.PhoneNumber,
-    "74300864791"
+    identityNumber
 );
 
         var merchant = new PaymentGatewayMerchant(

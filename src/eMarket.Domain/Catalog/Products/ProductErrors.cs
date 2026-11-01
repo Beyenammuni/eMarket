@@ -76,4 +76,13 @@ public static class ProductErrors
     public static readonly Error Unauthorized = new(
     "Product.Unauthorized",
     "You must be authenticated.");
+    public static readonly Error VariantAlreadyExists =
+    new(
+        "Product.Variant.AlreadyExists",
+
+        "This product variant already exists.");
+    public static readonly Error OptionGroupAlreadyExists =
+    new(
+        "Product.OptionGroup.AlreadyExists",
+        "This option group already exists for the product.");
 }

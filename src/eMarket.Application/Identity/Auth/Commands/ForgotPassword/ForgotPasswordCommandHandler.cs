@@ -14,9 +14,14 @@ internal sealed class ForgotPasswordCommandHandler : IRequestHandler<ForgotPassw
 {
     private readonly IIdentityDbContext _context;
     private readonly IConfiguration _configuration;
+    private readonly IEmailService _emailService;
 
-    public ForgotPasswordCommandHandler(IIdentityDbContext context, IConfiguration configuration)
-    { _context = context; _configuration = configuration; }
+    public ForgotPasswordCommandHandler(IIdentityDbContext context,
+        IConfiguration configuration, IEmailService emailService)
+    {
+        _context = context; _configuration = configuration;
+        _emailService = emailService;
+    }
 
     public async Task<Result<ForgotPasswordResponse>> Handle(ForgotPasswordCommand request, CancellationToken cancellationToken)
     {
@@ -35,8 +40,19 @@ internal sealed class ForgotPasswordCommandHandler : IRequestHandler<ForgotPassw
         var resetToken = new PasswordResetToken(Guid.NewGuid(), user.Id, hash, DateTime.UtcNow.AddMinutes(30));
         await _context.PasswordResetTokens.AddAsync(resetToken, cancellationToken);
         await _context.SaveChangesAsync(cancellationToken);
+        var frontendUrl = _configuration["App:FrontendUrl"]
+    ?? throw new InvalidOperationException(
+        "Frontend URL is not configured.");
 
+        var resetUrl =
+            $"{frontendUrl.TrimEnd('/')}/reset-password?email={Uri.EscapeDataString(request.Email)}&token={Uri.EscapeDataString(rawToken)}";
+
+        await _emailService.SendPasswordResetAsync(
+            request.Email,
+            resetUrl,
+            cancellationToken);
         var expose = _configuration.GetValue<bool>("Auth:ExposeResetToken");
-        return Result<ForgotPasswordResponse>.Success(new(message, expose ? rawToken : null));
+        return Result<ForgotPasswordResponse>.Success(
+    new(message, null));
     }
 }

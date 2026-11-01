@@ -59,8 +59,24 @@ internal sealed class UpdateCartItemCommandHandler
             return Result.Failure(
                 ProductErrors.ProductNotAvailable);
         }
+        var availableStock = product.StockQuantity;
 
-        if (request.Quantity > product.StockQuantity)
+        if (request.VariantId is not null)
+        {
+            var variant = product.Variants.FirstOrDefault(
+                x => x.Id == request.VariantId.Value &&
+                     x.IsActive);
+
+            if (variant is null)
+            {
+                return Result.Failure(
+                    ProductErrors.NotFound);
+            }
+
+            availableStock = variant.StockQuantity;
+        }
+
+        if (request.Quantity > availableStock)
         {
             return Result.Failure(
                 CartErrors.InsufficientStock);
@@ -68,7 +84,8 @@ internal sealed class UpdateCartItemCommandHandler
 
         var result = cart.ChangeItemQuantity(
             product.Id,
-            Quantity.Create(request.Quantity));
+            Quantity.Create(request.Quantity),
+            request.VariantId);
 
         if (result.IsFailure)
         {

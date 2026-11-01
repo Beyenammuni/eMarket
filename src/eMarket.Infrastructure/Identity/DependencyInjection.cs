@@ -10,10 +10,12 @@ using eMarket.Infrastructure.Payments.Iyzico;
 using eMarket.Infrastructure.Persistence;
 using eMarket.Infrastructure.Persistence.Interceptors;
 using eMarket.Infrastructure.Persistence.Repositories;
+using eMarket.Infrastructure.Security;
 using eMarket.Infrastructure.Subscriptions;
 using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -21,6 +23,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
+using Resend;
+using System.IO;
 using System.Text;
 
 namespace eMarket.Infrastructure.Identity;
@@ -88,8 +92,24 @@ public static class DependencyInjection
 
         services.AddScoped<IProductRepository, ProductRepository>();
 
+        services.AddScoped<
+    ISellerPlanPaymentGateway,
+    IyzicoSellerPlanPaymentGateway>();
+
         services.AddScoped<IIdentityDbContext>(sp =>
             sp.GetRequiredService<AppDbContext>());
+        services.AddScoped<IEmailService, ResendEmailService>();
+        services.AddOptions();
+        services.AddHttpClient();
+
+        services.Configure<ResendClientOptions>(options =>
+        {
+            options.ApiToken = configuration["Resend:ApiKey"]
+                ?? throw new InvalidOperationException(
+                    "Resend API key is not configured.");
+        });
+
+        services.AddHttpClient<IResend, ResendClient>();
 
         services.AddScoped<IAdminDashboardRepository,
             AdminDashboardRepository>();
@@ -170,7 +190,18 @@ public static class DependencyInjection
                     "Payments:WebhookSecret must be configured in production.");
             }
         }
+        var dataProtectionPath =
+    configuration["DataProtection:KeysPath"]
+    ?? Path.Combine(
+        Environment.GetFolderPath(
+            Environment.SpecialFolder.LocalApplicationData),
+        "Pazora",
+        "DataProtection-Keys");
 
+        services.AddDataProtection()
+            .SetApplicationName("Pazora")
+            .PersistKeysToFileSystem(
+                new DirectoryInfo(dataProtectionPath));
         services.AddScoped<ISubscriptionDbContext>(sp =>
             sp.GetRequiredService<AppDbContext>());
 
@@ -182,11 +213,15 @@ public static class DependencyInjection
                 JwtOptions.SectionName));
 
         services.AddScoped<IJwtService, JwtService>();
-
+        services.AddScoped<
+    ICustomerIdentityProtector,
+    DataProtectionCustomerIdentityProtector>();
         var jwtSection =
             configuration.GetSection(
                 JwtOptions.SectionName);
-
+        services.AddScoped<
+    ISensitiveDataProtector,
+    DataProtectionSensitiveDataProtector>();
         var jwtOptions =
             jwtSection.Get<JwtOptions>()
             ?? throw new InvalidOperationException(

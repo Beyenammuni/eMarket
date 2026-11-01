@@ -4,6 +4,5 @@ public sealed record UpdateBusinessResponse(
     string Name,
     string Type,
     string LegalName,
-    string? IdentityNumber,
     string? TaxNumber,
     string? TaxOffice);

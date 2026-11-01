@@ -70,8 +70,8 @@ public sealed class BusinessConfiguration
                     .IsRequired();
 
                 merchant.Property(x => x.IdentityNumber)
-                    .HasColumnName("IdentityNumber")
-                    .HasMaxLength(50);
+    .HasColumnName("IdentityNumber")
+    .HasMaxLength(2048);
 
                 merchant.Property(x => x.TaxNumber)
                     .HasColumnName("TaxNumber")
@@ -110,6 +110,13 @@ public sealed class BusinessConfiguration
                     .HasColumnName("MerchantIban")
                     .HasMaxLength(34)
                     .IsRequired();
+
+                merchant.Property(x => x.RepresentativeFullName)
+    .HasColumnName("RepresentativeFullName")
+    .HasMaxLength(200);
+                merchant.Property(x => x.RepresentativeIdentityNumber)
+    .HasColumnName("RepresentativeIdentityNumber")
+    .HasMaxLength(2048);
             });
 
         builder.Property(x => x.SupportsSubscriptions)

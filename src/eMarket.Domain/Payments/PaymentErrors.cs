@@ -32,4 +32,17 @@ public static class PaymentErrors
         new(
             "Payment.NotFound",
             "Payment was not found.");
+    public static readonly Error InvalidStatus =
+    new(
+        "Payment.InvalidStatus",
+        "Payment cannot transition from its current status.");
+
+    public static readonly Error InvalidProviderResponse =
+        new(
+            "Payment.InvalidProviderResponse",
+            "Payment provider response is invalid.");
+    public static readonly Error InvalidPaymentReference =
+    new(
+        "Payment.InvalidReference",
+        "Payment must be linked to exactly one order or subscription.");
 }

@@ -13,7 +13,6 @@ public sealed class ApproveBusinessCommandHandler
     private readonly IBusinessRepository _businessRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ISubMerchantProvisioningQueue _queue;
-
     public ApproveBusinessCommandHandler(
         IBusinessRepository businessRepository,
         IUnitOfWork unitOfWork,
@@ -23,6 +22,7 @@ public sealed class ApproveBusinessCommandHandler
         _unitOfWork = unitOfWork;
         _queue = queue;
     }
+
 
     public async Task<Result> Handle(
         ApproveBusinessCommand request,
@@ -34,8 +34,7 @@ public sealed class ApproveBusinessCommandHandler
 
         if (business is null)
         {
-            return Result.Failure(
-                BusinessErrors.NotFound);
+            return Result.Failure(BusinessErrors.NotFound);
         }
 
         if (business.Status != BusinessStatus.Pending)
@@ -46,10 +45,21 @@ public sealed class ApproveBusinessCommandHandler
                     "Only pending businesses can be approved."));
         }
 
+
+        var approvalResult = business.Approve();
+
+        if (approvalResult.IsFailure)
+        {
+            return Result.Failure(approvalResult.Error);
+        }
+
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
         await _queue.QueueAsync(
             business.Id.Value,
             cancellationToken);
 
         return Result.Success();
+
     }
 }

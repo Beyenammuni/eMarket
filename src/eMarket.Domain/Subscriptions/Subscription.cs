@@ -43,6 +43,7 @@ public sealed class Subscription : AggregateRoot<SubscriptionId>
     public byte[] RowVersion { get; private set; } = [];
     public DateTime? CancelledAt { get; private set; }
     public Guid? LastGeneratedOrderId { get; private set; }
+    public string? IyzicoPricingPlanReferenceCode { get; private set; }
     public string? IyzicoSubscriptionReferenceCode { get; private set; }
     public decimal WeeklyProductAmount { get; private set; }
 
@@ -222,6 +223,18 @@ public Result RemoveItem(ProductId productId)
 
         IyzicoSubscriptionReferenceCode =
             referenceCode.Trim();
+
+        UpdatedAt = DateTime.UtcNow;
+
+        return Result.Success();
+    }
+    public Result SetIyzicoPricingPlanReference(
+    string referenceCode)
+    {
+        if (string.IsNullOrWhiteSpace(referenceCode))
+            return Result.Failure(SubscriptionErrors.NotActive);
+
+        IyzicoPricingPlanReferenceCode = referenceCode.Trim();
 
         UpdatedAt = DateTime.UtcNow;
 

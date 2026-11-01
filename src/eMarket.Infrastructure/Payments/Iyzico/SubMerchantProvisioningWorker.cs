@@ -1,9 +1,14 @@
 using eMarket.Application.Common.Interfaces;
 using eMarket.Application.Common.Interfaces.Payments;
 using eMarket.Application.Common.IRepositories;
+using eMarket.Domain.Businesses;
+using eMarket.Domain.Businesses.ValueObjects;
+using eMarket.Domain.Identity;
+using eMarket.Domain.Identity.Entities;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.EntityFrameworkCore;
 
 namespace eMarket.Infrastructure.Payments.Iyzico;
 
@@ -74,6 +79,10 @@ internal sealed class SubMerchantProvisioningWorker
             scope.ServiceProvider
                 .GetRequiredService<IUnitOfWork>();
 
+        var identityContext =
+    scope.ServiceProvider
+        .GetRequiredService<IIdentityDbContext>();
+
         var result =
             await subMerchantService.CreateAsync(
                 businessId,
@@ -100,9 +109,9 @@ internal sealed class SubMerchantProvisioningWorker
         }
 
         var business =
-            await businessRepository.GetByIdAsync(
-                Domain.Businesses.BusinessId.Create(businessId),
-                cancellationToken);
+    await businessRepository.GetWithMembersAsync(
+        Domain.Businesses.BusinessId.Create(businessId),
+        cancellationToken);
 
         if (business is null)
         {
@@ -113,10 +122,23 @@ internal sealed class SubMerchantProvisioningWorker
             return;
         }
 
+        if (!string.Equals(
+         result.Status,
+         "SUCCESS",
+         StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogError(
+                "iyzico provisioning did not return SUCCESS for Business {BusinessId}. Status: {Status}",
+                businessId,
+                result.Status);
+
+            return;
+        }
+
         var setMerchantResult =
             business.SetIyzicoSubMerchant(
                 result.SubMerchantKey,
-                result.Status ?? "ACTIVE");
+                result.Status);
 
         if (setMerchantResult.IsFailure)
         {
@@ -128,24 +150,65 @@ internal sealed class SubMerchantProvisioningWorker
             return;
         }
 
-        var activateResult =
-            business.Activate();
-
-        if (activateResult.IsFailure)
+        if (business.IsApproved)
         {
-            _logger.LogError(
-                "Failed to activate Business {BusinessId}: {Error}",
-                businessId,
-                activateResult.Error);
+            var activateResult = business.Activate();
 
-            return;
+            if (activateResult.IsFailure)
+            {
+                _logger.LogError(
+                    "Failed to activate Business {BusinessId}: {Error}",
+                    businessId,
+                    activateResult.Error);
+
+                return;
+            }
         }
+
 
         await unitOfWork.SaveChangesAsync(
             cancellationToken);
 
+        if (business.Status == BusinessStatus.Active)
+        {
+            var owner = business.Members.FirstOrDefault(
+                member =>
+                    member.IsActive &&
+                    member.Role == BusinessRole.Owner);
+
+            if (owner is null)
+            {
+                _logger.LogError(
+                    "No active owner found for Business {BusinessId}.",
+                    businessId);
+
+                return;
+            }
+
+            var hasSellerRole =
+                await identityContext.UserRoleAssignments.AnyAsync(
+                    assignment =>
+                        assignment.UserId == owner.UserId &&
+                        assignment.RoleId == UserRole.Seller.Id,
+                    cancellationToken);
+
+            if (!hasSellerRole)
+            {
+                await identityContext.UserRoleAssignments.AddAsync(
+                    new UserRoleAssignment(
+                        owner.UserId,
+                        UserRole.Seller),
+                    cancellationToken);
+            }
+            if (!hasSellerRole)
+            {
+                await identityContext.SaveChangesAsync(
+                    cancellationToken);
+            }
+        }
+
         _logger.LogInformation(
-            "Business {BusinessId} successfully provisioned and activated.",
+            "iyzico sub-merchant successfully provisioned for Business {BusinessId}.",
             businessId);
     }
 }

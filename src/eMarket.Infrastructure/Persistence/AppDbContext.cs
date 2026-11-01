@@ -3,6 +3,8 @@ using eMarket.Domain.Businesses;
 using eMarket.Domain.Businesses.Entities;
 using eMarket.Domain.Catalog.Categories;
 using eMarket.Domain.Catalog.Products;
+using eMarket.Domain.Catalog.Products.Options;
+using eMarket.Domain.Catalog.Products.Variants;
 using eMarket.Domain.Identity;
 using eMarket.Domain.Identity.Entities;
 using eMarket.Domain.Payments;
@@ -12,6 +14,7 @@ using eMarket.Domain.Subscriptions;
 using eMarket.Infrastructure.Persistence.Configurations.Identity;
 using eMarket.SharedKernel.Exceptions;
 using Microsoft.EntityFrameworkCore;
+using System.Data;
 
 namespace eMarket.Infrastructure.Persistence;
 
@@ -34,11 +37,38 @@ public sealed class AppDbContext : DbContext ,IBusinessDbContext,
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<BusinessMember> BusinessMembers => Set<BusinessMember>();
     public DbSet<Subscription> Subscriptions => Set<Subscription>();
-
+    public DbSet<ProductVariant> ProductVariants => Set<ProductVariant>();
+    public DbSet<ProductOptionGroup> ProductOptionGroups => Set<ProductOptionGroup>();
+    public DbSet<ProductOption> ProductOptions => Set<ProductOption>();
     public DbSet<Domain.Identity.Entities.UserCredential> UserCredentials => Set<Domain.Identity.Entities.UserCredential>();
     public DbSet<Domain.Identity.Entities.PasswordResetToken> PasswordResetTokens => Set<Domain.Identity.Entities.PasswordResetToken>();
     public DbSet<Domain.Identity.Entities.UserRoleAssignment> UserRoleAssignments => Set<Domain.Identity.Entities.UserRoleAssignment>();
+    public DbSet<SellerPlan> SellerPlans => Set<SellerPlan>();
+    public DbSet<SellerPlanSubscription> SellerPlanSubscriptions
+        => Set<SellerPlanSubscription>();
+    public DbSet<SellerPlanPayment> SellerPlanPayments
+    => Set<SellerPlanPayment>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public async Task ExecuteInSerializableTransactionAsync(
+    Func<CancellationToken, Task> operation,
+    CancellationToken cancellationToken = default)
+    {
+        await using var transaction = await Database.BeginTransactionAsync(
+            IsolationLevel.Serializable,
+            cancellationToken);
+
+        try
+        {
+            await operation(cancellationToken);
+
+            await transaction.CommitAsync(cancellationToken);
+        }
+        catch
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            throw;
+        }
+    }
     public override async Task<int> SaveChangesAsync(
         CancellationToken cancellationToken = default)
     {
@@ -59,7 +89,5 @@ public sealed class AppDbContext : DbContext ,IBusinessDbContext,
         modelBuilder.ApplyConfigurationsFromAssembly(
             typeof(AppDbContext).Assembly);
         base.OnModelCreating(modelBuilder);
-
-
     }
 }

@@ -75,17 +75,6 @@ internal sealed class IyzicoSubscriptionGateway
                     checkoutRequest,
                     options);
 
-            Console.WriteLine(
-    $"IYZICO STATUS: {response.Status}");
-
-            Console.WriteLine(
-                $"IYZICO ERROR CODE: {response.ErrorCode}");
-
-            Console.WriteLine(
-                $"IYZICO ERROR MESSAGE: {response.ErrorMessage}");
-
-            Console.WriteLine(
-                $"IYZICO TOKEN: {response.Token}");
 
             if (!string.Equals(
                     response.Status,
@@ -101,10 +90,13 @@ internal sealed class IyzicoSubscriptionGateway
             }
 
             return new SubscriptionPaymentGatewayResult(
-                true,
-                response.CheckoutFormContent,
-                response.Token,
-                null);
+     true,
+     response.CheckoutFormContent,
+     response.Token,
+     null)
+            {
+                PricingPlanReferenceCode = pricingPlanReferenceCode
+            };
         }
         catch (Exception ex)
         {
@@ -144,8 +136,6 @@ internal sealed class IyzicoSubscriptionGateway
             Plan.RetrieveAll(
                 plansRequest,
                 options);
-        Console.WriteLine(
-    $"iyzico plans count: {plansResponse.Data?.Items?.Count ?? 0}");
         if (!string.Equals(
         plansResponse.Status,
         Status.SUCCESS.ToString(),
@@ -248,26 +238,7 @@ internal sealed class IyzicoSubscriptionGateway
             parts.Where(x =>
                 !string.IsNullOrWhiteSpace(x)));
     }
-    public async Task<string> TestListProductsAsync(
-    CancellationToken cancellationToken = default)
-    {
-        var options = new Iyzipay.Options
-        {
-            ApiKey = _options.ApiKey,
-            SecretKey = _options.SecretKey,
-            BaseUrl = _options.BaseUrl
-        };
 
-        var request = new PagingRequest
-        {
-            Page = 1,
-            Count = 10
-        };
-
-        var response = Product.RetrieveAll(request, options);
-
-        return System.Text.Json.JsonSerializer.Serialize(response);
-    }
     public async Task<SubscriptionCheckoutResult>
     GetCheckoutResultAsync(
         string token,
@@ -291,14 +262,7 @@ internal sealed class IyzicoSubscriptionGateway
                 Subscription.GetCheckoutFormResult(
                     request,
                     options);
-            Console.WriteLine(
-    $"IYZICO RESULT CONVERSATION ID: {response.ConversationId}");
 
-            Console.WriteLine(
-                $"IYZICO RESULT STATUS: {response.Status}");
-
-            Console.WriteLine(
-                $"IYZICO SUBSCRIPTION STATUS: {response.Data?.SubscriptionStatus}");
 
             if (!string.Equals(
                     response.Status,
@@ -317,35 +281,73 @@ internal sealed class IyzicoSubscriptionGateway
             }
 
             var data = response.Data;
-            Console.WriteLine(
-    $"IYZICO CHECKOUT DATA: {System.Text.Json.JsonSerializer.Serialize(data)}");
-            Guid? paymentId = null;
 
-            if (Guid.TryParse(
-                    response.ConversationId,
-                    out var parsedPaymentId))
+            if (data is null ||
+                string.IsNullOrWhiteSpace(data.ReferenceCode) ||
+                !Guid.TryParse(response.ConversationId, out var parsedPaymentId))
             {
-                paymentId = parsedPaymentId;
+                return new SubscriptionCheckoutResult(
+                    false, null, null, null, null, null,
+                    "Invalid subscription checkout result.");
+            }
+
+            // Retrieve the subscription from iyzico.
+            var retrieveRequest = new RetrieveSubscriptionRequest
+            {
+                SubscriptionReferenceCode = data.ReferenceCode
+            };
+
+            var retrieveResponse = Subscription.Retrieve(
+                retrieveRequest,
+                options);
+
+            if (!string.Equals(
+                    retrieveResponse.Status,
+                    Status.SUCCESS.ToString(),
+                    StringComparison.OrdinalIgnoreCase) ||
+                retrieveResponse.Data is null ||
+                !string.Equals(
+                    retrieveResponse.Data.ReferenceCode,
+                    data.ReferenceCode,
+                    StringComparison.Ordinal))
+            {
+                return new SubscriptionCheckoutResult(
+                    false, null, null, null, null, null,
+                    "Unable to verify the subscription with iyzico.");
+            }
+
+            // Require a successful payment attempt linked to this payment.
+            var successfulAttempt = retrieveResponse.Data.SubscriptionOrders?
+                .SelectMany(order => order.OrderPaymentAttempts ?? [])
+                .Any(attempt =>
+                    string.Equals(
+                        attempt.ConversationId,
+                        response.ConversationId,
+                        StringComparison.Ordinal) &&
+                    string.Equals(
+                        attempt.PaymentStatus,
+                        "SUCCESS",
+                        StringComparison.OrdinalIgnoreCase));
+
+            if (successfulAttempt != true)
+            {
+                return new SubscriptionCheckoutResult(
+                    false, null, null, null, null, null,
+                    "The initial subscription payment could not be verified.");
             }
 
             return new SubscriptionCheckoutResult(
                 true,
-                paymentId,
-                data?.ReferenceCode,
-                data?.PricingPlanReferenceCode,
-                data?.CustomerReferenceCode,
-                data?.SubscriptionStatus,
+                parsedPaymentId,
+                data.ReferenceCode,
+                data.PricingPlanReferenceCode,
+                data.CustomerReferenceCode,
+                retrieveResponse.Data.SubscriptionStatus,
                 null);
-        }
-        catch (Exception ex)
+        }catch (Exception ex)
         {
             return new SubscriptionCheckoutResult(
-                false,
-                null,
-                null,
-                null,
-                null,
-                null,
+                false, null, null, null, null, null,
                 ex.Message);
         }
     }

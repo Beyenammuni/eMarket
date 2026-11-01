@@ -1,5 +1,6 @@
 using eMarket.Application.Identity.Users.GetUsers;
 using eMarket.Application.Identity.Users.Queries.GetUserById;
+using eMarket.Application.Identity.Users.SetCustomerIdentityNumber;
 using MediatR;
 
 namespace eMarket.Api.Endpoints.Auth;
@@ -17,6 +18,8 @@ public static class UserEndpoints
         group.MapGet("/", GetUsers);
         group.MapGet("/{userId:guid}", GetUser);
 
+        group.MapPut("/me/identity-number", SetIdentityNumber)
+    .RequireAuthorization();
         return app;
     }
 
@@ -32,7 +35,19 @@ public static class UserEndpoints
             ? Results.BadRequest(result.Error)
             : Results.Ok(result.Value);
     }
+    private static async Task<IResult> SetIdentityNumber(
+    SetCustomerIdentityNumberCommand command,
+    ISender sender,
+    CancellationToken cancellationToken)
+    {
+        var result = await sender.Send(
+            command,
+            cancellationToken);
 
+        return result.IsFailure
+            ? Results.BadRequest(result.Error)
+            : Results.NoContent();
+    }
     private static async Task<IResult> GetUser(
         Guid userId,
         ISender sender,

@@ -42,6 +42,10 @@ internal sealed class CompleteSubscriptionCheckoutCommandHandler
             return Result.Failure(
                 PaymentErrors.NotFound);
         }
+        if (payment.Status == PaymentStatus.Succeeded)
+        {
+            return Result.Success();
+        }
 
         if (payment.SubscriptionId is null)
         {
@@ -68,8 +72,21 @@ internal sealed class CompleteSubscriptionCheckoutCommandHandler
                 cancellationToken);
 
         if (!checkoutResult.IsSuccess ||
-            string.IsNullOrWhiteSpace(
-                checkoutResult.SubscriptionReferenceCode))
+    checkoutResult.PaymentId != request.PaymentId ||
+    string.IsNullOrWhiteSpace(
+        checkoutResult.SubscriptionReferenceCode) ||
+    string.IsNullOrWhiteSpace(
+        checkoutResult.PricingPlanReferenceCode) ||
+    string.IsNullOrWhiteSpace(
+        checkoutResult.CustomerReferenceCode) ||
+        !string.Equals(
+    checkoutResult.PricingPlanReferenceCode,
+    subscription.IyzicoPricingPlanReferenceCode,
+    StringComparison.Ordinal) ||
+    !string.Equals(
+        checkoutResult.SubscriptionStatus,
+        "ACTIVE",
+        StringComparison.OrdinalIgnoreCase))
         {
             return Result.Failure(
                 SubscriptionErrors.NotActive);
@@ -101,6 +118,7 @@ internal sealed class CompleteSubscriptionCheckoutCommandHandler
         {
             return activationResult;
         }
+
 
         await _unitOfWork.SaveChangesAsync(
             cancellationToken);

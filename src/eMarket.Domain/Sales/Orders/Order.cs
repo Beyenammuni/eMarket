@@ -71,11 +71,14 @@ private Order()
         return Result<Order>.Success(order);
     }
 
+
     public Result AddItem(
         ProductId productId,
         string productName,
         Money unitPrice,
-        int quantity)
+        int quantity,
+        Guid? variantId = null,
+        string? variantName = null)
     {
         if (quantity <= 0)
         {
@@ -87,33 +90,37 @@ private Order()
             productId,
             productName,
             unitPrice,
-            quantity);
+            quantity,
+            variantId,
+            variantName);
 
         _items.Add(item);
 
         return Result.Success();
     }
 
+
     public Result MarkAsPaid()
     {
+        if (Status == OrderStatus.Paid)
+        {
+            return Result.Success();
+        }
+
         if (new OrderCanBePaidRule(Status).IsBroken())
         {
-            return Result.Failure(
-                OrderErrors.InvalidStatus);
+            return Result.Failure(OrderErrors.InvalidStatus);
         }
 
         if (new OrderMustHaveItemsRule(Items).IsBroken())
         {
-            return Result.Failure(
-                OrderErrors.EmptyOrder);
+            return Result.Failure(OrderErrors.EmptyOrder);
         }
 
         Status = OrderStatus.Paid;
-
         UpdatedAt = DateTime.UtcNow;
 
-        AddDomainEvent(
-            new OrderPaidDomainEvent(Id));
+        AddDomainEvent(new OrderPaidDomainEvent(Id));
 
         return Result.Success();
     }

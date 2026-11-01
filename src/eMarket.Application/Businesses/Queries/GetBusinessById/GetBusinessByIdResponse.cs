@@ -14,6 +14,5 @@ public sealed record GetBusinessByIdResponse(
     string City,
     string Country,
     string LegalName,
-string? IdentityNumber,
 string? TaxNumber,
 string? TaxOffice);

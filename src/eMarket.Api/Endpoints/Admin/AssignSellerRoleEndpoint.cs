@@ -1,8 +1,6 @@
+
 using eMarket.Api.Common;
-using eMarket.Application.Identity.Auth.Commands.AssignSellerRole;
-using eMarket.Application.Identity.Commands.AssignSellerRole;
 using eMarket.SharedKernel.Constants;
-using MediatR;
 
 namespace eMarket.Api.Endpoints.Admin;
 
@@ -13,22 +11,11 @@ public static class AssignSellerRoleEndpoint
     {
         app.MapPost(
             "/api/admin/users/{userId:guid}/seller-role",
-            async (
-                Guid userId,
-                ISender sender,
-                CancellationToken cancellationToken) =>
+            () => Results.Conflict(new
             {
-                var result = await sender.Send(
-                    new AssignSellerRoleCommand(userId),
-                    cancellationToken);
-
-                if (result.IsFailure)
-                {
-                    return ApiResults.Failure(result.Error);
-                }
-
-                return Results.NoContent();
-            })
+                code = "SellerRole.AssignmentDisabled",
+                message = "Seller role is assigned automatically after business approval and successful payment setup."
+            }))
             .WithName("AssignSellerRole")
             .WithTags("Admin Users")
             .RequireAuthorization(policy =>

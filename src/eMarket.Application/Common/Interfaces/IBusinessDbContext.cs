@@ -12,4 +12,11 @@ public interface IBusinessDbContext
 
     Task<int> SaveChangesAsync(
         CancellationToken cancellationToken = default);
+    DbSet<SellerPlan> SellerPlans { get; }
+    DbSet<SellerPlanSubscription> SellerPlanSubscriptions { get; }
+    DbSet<SellerPlanPayment> SellerPlanPayments
+  { get; }
+    Task ExecuteInSerializableTransactionAsync(
+    Func<CancellationToken, Task> operation,
+    CancellationToken cancellationToken = default);
 }

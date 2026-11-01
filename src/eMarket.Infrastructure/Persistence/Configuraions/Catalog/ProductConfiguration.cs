@@ -88,6 +88,22 @@ public sealed class ProductConfiguration
             .IsConcurrencyToken();
 
         builder.Property(x => x.CreatedAt);
+        builder.HasMany(x => x.Variants)
+    .WithOne()
+    .HasForeignKey(x => x.ProductId)
+    .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Navigation(x => x.Variants)
+            .HasField("_variants")
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+        builder.HasMany(x => x.OptionGroups)
+    .WithOne()
+    .HasForeignKey(x => x.ProductId)
+    .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Navigation(x => x.OptionGroups)
+            .HasField("_optionGroups")
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
 
         builder.Ignore(x => x.DomainEvents);
     }

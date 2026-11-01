@@ -115,10 +115,18 @@ internal sealed class IyzicoPaymentGateway : IPaymentGateway
                 ex.Message);
         }
     }
+
     public async Task<PaymentCheckoutResult> GetCheckoutResultAsync(
-    string token,
-    CancellationToken cancellationToken = default)
+        string token,
+        CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            return new PaymentCheckoutResult(
+                false, null, "iyzico token is required.",
+                null, null, null, null, null);
+        }
+
         var options = new Iyzipay.Options
         {
             ApiKey = _options.ApiKey,
@@ -133,10 +141,7 @@ internal sealed class IyzicoPaymentGateway : IPaymentGateway
 
         try
         {
-            var response =
-                await CheckoutForm.Retrieve(
-                    request,
-                    options);
+            var response = await CheckoutForm.Retrieve(request, options);
 
             if (!string.Equals(
                     response.Status,
@@ -145,9 +150,14 @@ internal sealed class IyzicoPaymentGateway : IPaymentGateway
             {
                 return new PaymentCheckoutResult(
                     false,
-                    null,
+                    response.PaymentId,
                     response.ErrorMessage ??
-                    "iyzico checkout result could not be retrieved.");
+                        "iyzico checkout result could not be retrieved.",
+                    response.ConversationId,
+                    response.BasketId,
+                    response.Price,
+                    response.PaidPrice,
+                    response.Currency);
             }
 
             if (!string.Equals(
@@ -159,22 +169,34 @@ internal sealed class IyzicoPaymentGateway : IPaymentGateway
                     false,
                     response.PaymentId,
                     response.ErrorMessage ??
-                    "iyzico payment was not successful.");
+                        "iyzico payment was not successful.",
+                    response.ConversationId,
+                    response.BasketId,
+                    response.Price,
+                    response.PaidPrice,
+                    response.Currency);
             }
 
             return new PaymentCheckoutResult(
-                true,
-                response.PaymentId,
-                null);
+    true,
+    response.PaymentId,
+    null,
+    response.ConversationId,
+    response.BasketId,
+    response.Price,
+    response.PaidPrice,
+    response.Currency);
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             return new PaymentCheckoutResult(
                 false,
                 null,
-                ex.Message);
+                "Unable to verify the iyzico checkout result.",
+                null, null, null, null, null);
         }
     }
+
     private static List<BasketItem> CreateBasketItems(
         PaymentGatewayRequest request)
     {

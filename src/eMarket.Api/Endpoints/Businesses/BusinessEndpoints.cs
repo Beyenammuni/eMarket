@@ -19,6 +19,7 @@ public static class BusinessEndpoints
         app.MapSuspendBusinessEndpoint();
         app.MapActivateBusinessEndpoint();
         app.MapSetBusinessSubscriptionSupportEndpoint();
+        app.MapStartSellerPlanSubscriptionEndpoint();
         // Queries
         app.MapGetAvailableBusinessMembers();
         app.MapGetBusinessByIdEndpoint();

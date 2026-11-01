@@ -2,10 +2,8 @@ using eMarket.Application.Common.IRepositories;
 using eMarket.Domain.Businesses;
 using eMarket.Domain.Catalog.Products;
 using eMarket.Domain.Identity;
-using eMarket.Domain.Identity.Entities;
 using eMarket.Domain.Payments;
 using eMarket.Domain.Sales.Orders;
-using eMarket.Domain.Sales.Orders.Entities;
 using eMarket.Domain.Subscriptions;
 using eMarket.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -87,7 +85,7 @@ public sealed class AdminDashboardRepository(AppDbContext context) : IAdminDashb
     .SelectMany(order => order.Items)
     .Select(item => new
     {
-        item.ProductId,
+        ProductId = item.ProductId.Value,
         item.ProductName,
         item.Quantity,
         UnitPrice = item.UnitPrice.Amount
@@ -95,21 +93,25 @@ public sealed class AdminDashboardRepository(AppDbContext context) : IAdminDashb
     .ToListAsync(cancellationToken);
 
         var topProducts = topProductItems
-            .GroupBy(x => new
+            .GroupBy(item => new
             {
-                x.ProductId,
-                x.ProductName
+                item.ProductId,
+                item.ProductName
             })
-            .Select(g => new AdminTopProduct(
-                g.Key.ProductId.Value,
-                g.Key.ProductName,
-                g.Sum(x => x.Quantity),
-                g.Sum(x => x.UnitPrice * x.Quantity)))
-            .OrderByDescending(x => x.QuantitySold)
+            .Select(group => new AdminTopProduct(
+                group.Key.ProductId,
+                group.Key.ProductName,
+                group.Sum(item => item.Quantity),
+                group.Sum(item => item.UnitPrice * item.Quantity)))
+            .OrderByDescending(product => product.QuantitySold)
             .Take(10)
             .ToList();
 
-        return new AdminDashboardData(totalUsers, activeUsers, newUsers, totalBusinesses, activeBusinesses,
+
+        return new AdminDashboardData(totalUsers,
+            activeUsers,
+            newUsers,
+            totalBusinesses, activeBusinesses,
             totalProducts, activeProducts, lowStockProducts, outOfStockProducts, totalOrders, ordersToday,
             pending, paid, processing, shipped, delivered, cancelled, totalRevenue, revenueToday,
             totalPayments, successfulPayments, failedPayments, activeSubscriptions, cancelledSubscriptions,

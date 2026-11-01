@@ -1,5 +1,6 @@
 using eMarket.Application.Common.Interfaces;
 using eMarket.Application.Common.IRepositories;
+using eMarket.Domain.Businesses;
 using eMarket.Domain.Catalog.Products;
 using eMarket.Domain.Sales.Orders;
 using eMarket.Domain.Sales.Orders.ValueObjects;
@@ -103,11 +104,24 @@ internal sealed class CreateOrderCommandHandler
                 return Result<CreateOrderResponse>.Failure(
                     OrderErrors.ProductNotAvailable);
             }
-            Console.WriteLine(
-    $"STOCK CHECK | ProductId={cartItem.ProductId.Value} | Stock={product.StockQuantity} | CartQuantity={cartItem.Quantity.Value}");
+            if (cartItem.VariantId.HasValue)
+            {
+                var variant = product.Variants.FirstOrDefault(
+                    x => x.Id == cartItem.VariantId.Value && x.IsActive);
 
-            // Check stock
-            if (product.StockQuantity < cartItem.Quantity.Value)
+                if (variant is null)
+                {
+                    return Result<CreateOrderResponse>.Failure(
+                        OrderErrors.ProductNotAvailable);
+                }
+
+                if (variant.StockQuantity < cartItem.Quantity.Value)
+                {
+                    return Result<CreateOrderResponse>.Failure(
+                        OrderErrors.InsufficientStock);
+                }
+            }
+            else if (product.StockQuantity < cartItem.Quantity.Value)
             {
                 return Result<CreateOrderResponse>.Failure(
                     OrderErrors.InsufficientStock);
@@ -117,11 +131,33 @@ internal sealed class CreateOrderCommandHandler
         }
 
         // 5. Order currently belongs to one Business
-        var businessId = products
+        var businessIds = products
             .Select(x => x.BusinessId)
             .Distinct()
-            .SingleOrDefault();
+            .ToList();
+        foreach (var product in products)
+        {
+            Console.WriteLine(
+                $"ORDER PRODUCT | ProductId={product.Id.Value} | BusinessId={product.BusinessId.Value}");
+        }
 
+        if (businessIds.Count == 0)
+        {
+            return Result<CreateOrderResponse>.Failure(
+                new Error(
+                    "Order.BusinessNotFound",
+                    "The order could not determine its business."));
+        }
+
+        if (businessIds.Count > 1)
+        {
+            return Result<CreateOrderResponse>.Failure(
+                new Error(
+                    "Order.MultipleBusinesses",
+                    "An order cannot contain products from multiple businesses."));
+        }
+
+        var businessId = businessIds[0];
         if (businessId == default)
         {
             return Result<CreateOrderResponse>.Failure(
@@ -149,14 +185,38 @@ internal sealed class CreateOrderCommandHandler
                     "Order.BusinessNotFound",
                     "The business could not be found."));
         }
-
+        if (business.Status != BusinessStatus.Active ||
+    !business.IsApproved ||
+    string.IsNullOrWhiteSpace(business.IyzicoSubMerchantKey) ||
+    !string.Equals(
+        business.IyzicoSubMerchantStatus,
+        "SUCCESS",
+        StringComparison.OrdinalIgnoreCase))
+        {
+            return Result<CreateOrderResponse>.Failure(
+                new Error(
+                    "Order.BusinessNotAvailable",
+                    "This business is not approved and ready to accept orders."));
+        }
         // 6. Create Order
         // 6. Calculate shipping
-        var subtotal = products
-    .Select((product, index) =>
-        product.Price.Amount *
-        cart.Items.ElementAt(index).Quantity.Value)
-    .Sum();
+        var subtotal = cart.Items.Sum(cartItem =>
+        {
+            var product = products.First(
+                x => x.Id == cartItem.ProductId);
+
+            var variant = cartItem.VariantId.HasValue
+    ? product.Variants.FirstOrDefault(
+        x => x.Id == cartItem.VariantId.Value && x.IsActive)
+    : null;
+
+            var unitPrice = variant is not null
+                ? variant.Price
+                : product.Price.Amount;
+
+            return unitPrice * cartItem.Quantity.Value;
+        });
+
 
         var shippingFee =
             business.FreeShippingThreshold.HasValue &&
@@ -185,20 +245,63 @@ internal sealed class CreateOrderCommandHandler
             var cartItem = cart.Items.ElementAt(i);
             var product = products[i];
 
-            var stockResult = product.DecreaseStock(
-                cartItem.Quantity.Value);
+            var variant = cartItem.VariantId.HasValue
+                ? product.Variants.FirstOrDefault(
+                    x => x.Id == cartItem.VariantId.Value && x.IsActive)
+                : null;
 
-            if (stockResult.IsFailure)
+            if (cartItem.VariantId.HasValue && variant is null)
             {
                 return Result<CreateOrderResponse>.Failure(
-                    stockResult.Error);
+                    OrderErrors.ProductNotAvailable);
+            }
+
+            var unitPrice = product.Price;
+            string? variantName = null;
+
+            if (variant is not null)
+            {
+                if (variant.StockQuantity < cartItem.Quantity.Value)
+                {
+                    return Result<CreateOrderResponse>.Failure(
+                        OrderErrors.InsufficientStock);
+                }
+
+                try
+                {
+                    variant.DecreaseStock(cartItem.Quantity.Value);
+                }
+                catch (InvalidOperationException)
+                {
+                    return Result<CreateOrderResponse>.Failure(
+                        OrderErrors.InsufficientStock);
+                }
+
+                unitPrice = eMarket.Domain.Catalog.Products.ValueObjects.Money.Create(
+                    variant.Price,
+                    product.Price.Currency);
+
+                variantName = variant.Name;
+            }
+            else
+            {
+                var stockResult = product.DecreaseStock(
+                    cartItem.Quantity.Value);
+
+                if (stockResult.IsFailure)
+                {
+                    return Result<CreateOrderResponse>.Failure(
+                        stockResult.Error);
+                }
             }
 
             var addItemResult = order.AddItem(
                 product.Id,
                 product.Name.Value,
-                product.Price,
-                cartItem.Quantity.Value);
+                unitPrice,
+                cartItem.Quantity.Value,
+                cartItem.VariantId,
+                variantName);
 
             if (addItemResult.IsFailure)
             {

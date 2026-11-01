@@ -1,5 +1,9 @@
 using eMarket.Api.Common;
+using eMarket.Api.Common.Authorization;
 using eMarket.Application.Catalog.Products.Commands.ActivateProduct;
+using eMarket.Application.Catalog.Products.Commands.AddProductOption;
+using eMarket.Application.Catalog.Products.Commands.AddProductOptionGroup;
+using eMarket.Application.Catalog.Products.Commands.AddProductVariant;
 using eMarket.Application.Catalog.Products.Commands.AddStock;
 using eMarket.Application.Catalog.Products.Commands.CreateProduct;
 using eMarket.Application.Catalog.Products.Commands.DeactivateProduct;
@@ -8,12 +12,9 @@ using eMarket.Application.Catalog.Products.Commands.RemoveStock;
 using eMarket.Application.Catalog.Products.Commands.UpdateProduct;
 using eMarket.Application.Catalog.Products.Queries.GetProductById;
 using eMarket.Application.Catalog.Products.Queries.GetProducts;
-using eMarket.Application.Sales.Carts.Commands.UpdateCartItem;
-using eMarket.Domain.Businesses;
+using eMarket.Application.Common.Authorization;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
-using eMarket.Api.Common.Authorization;
-using eMarket.Application.Common.Authorization;
 
 namespace eMarket.Api.Endpoints.Catalog.Products;
 
@@ -29,6 +30,11 @@ public static class ProductEndpoints
             "/{id:guid}/activate",
             ActivateProduct)
             .RequireBusinessPermission(Permissions.Products.Activate);
+
+        group.MapPost(
+    "/{id:guid}/option-groups/{optionGroupId:guid}/options",
+    AddProductOption)
+    .RequireBusinessPermission(Permissions.Products.Update);
 
         group.MapPatch(
             "/{id:guid}/deactivate",
@@ -54,6 +60,16 @@ public static class ProductEndpoints
             "/{id:guid}",
             DeleteProduct)
             .RequireBusinessPermission(Permissions.Products.Delete);
+
+        group.MapPost(
+    "/{id:guid}/variants",
+    AddProductVariant)
+    .RequireBusinessPermission(Permissions.Products.Update);
+
+        group.MapPost(
+    "/{id:guid}/option-groups",
+    AddProductOptionGroup)
+    .RequireBusinessPermission(Permissions.Products.Update);
 
         group.MapGet(
             "/",
@@ -104,6 +120,38 @@ public static class ProductEndpoints
 
         return Results.NoContent();
     }
+
+    private static async Task<IResult> AddProductOption(
+        Guid id,
+        Guid optionGroupId,
+        [FromBody] AddProductOptionRequest request,
+        [FromServices] ISender sender,
+        CancellationToken cancellationToken)
+    {
+        var command = new AddProductOptionCommand(
+            id,
+            optionGroupId,
+            request.Name,
+            request.AdditionalPrice,
+            request.DisplayOrder);
+
+        var result = await sender.Send(command, cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return ApiResults.Failure(result.Error);
+        }
+
+        return Results.Created(
+            $"/api/products/{id}",
+            new { id = result.Value });
+    }
+
+    public sealed record AddProductOptionRequest(
+        string Name,
+        decimal AdditionalPrice,
+        int DisplayOrder);
+
 
     private static async Task<IResult> AddStock(
      Guid id,
@@ -164,6 +212,74 @@ public static class ProductEndpoints
 
         return Results.NoContent();
     }
+
+    private static async Task<IResult> AddProductVariant(
+        Guid id,
+        [FromBody] AddProductVariantRequest request,
+        [FromServices] ISender sender,
+        CancellationToken cancellationToken)
+    {
+        var command = new AddProductVariantCommand(
+            id,
+            request.Name,
+            request.Sku,
+            request.Price,
+            request.StockQuantity);
+
+        var result = await sender.Send(
+            command,
+            cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return ApiResults.Failure(result.Error);
+        }
+
+        return Results.Created(
+            $"/api/products/{id}",
+            new { id = result.Value });
+    }
+
+    private static async Task<IResult> AddProductOptionGroup(
+        Guid id,
+        [FromBody] AddProductOptionGroupRequest request,
+        [FromServices] ISender sender,
+        CancellationToken cancellationToken)
+    {
+        var command = new AddProductOptionGroupCommand(
+            id,
+            request.Name,
+            request.IsRequired,
+            request.MinSelections,
+            request.MaxSelections,
+            request.DisplayOrder);
+
+        var result = await sender.Send(command, cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return ApiResults.Failure(result.Error);
+        }
+
+        return Results.Created(
+            $"/api/products/{id}",
+            new { id = result.Value });
+    }
+
+    public sealed record AddProductOptionGroupRequest(
+        string Name,
+        bool IsRequired,
+        int MinSelections,
+        int MaxSelections,
+        int DisplayOrder);
+
+
+    public sealed record AddProductVariantRequest(
+        string Name,
+        string? Sku,
+        decimal Price,
+        int StockQuantity);
+
     private static async Task<IResult> CreateProduct(
         [FromBody] CreateProductCommand command,
         [FromServices] ISender sender,

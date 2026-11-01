@@ -1,5 +1,6 @@
 using eMarket.Domain.Catalog.Products.ValueObjects;
 using eMarket.Domain.Payments.Events;
+using eMarket.Domain.Subscriptions;
 using eMarket.SharedKernel.Common;
 using eMarket.SharedKernel.Results;
 
@@ -86,6 +87,11 @@ public sealed class Payment : AggregateRoot<PaymentId>
         PaymentMethod method,
         decimal platformCommissionRate)
     {
+        if (orderId.HasValue == subscriptionId.HasValue)
+        {
+            return Result<Payment>.Failure(
+                PaymentErrors.InvalidPaymentReference);
+        }
         if (amount.Amount <= 0)
         {
             return Result<Payment>.Failure(
@@ -123,6 +129,7 @@ public sealed class Payment : AggregateRoot<PaymentId>
         PaymentMethod method,
         decimal platformCommissionRate)
     {
+
         return Create(
             orderId,
             null,
@@ -132,12 +139,23 @@ public sealed class Payment : AggregateRoot<PaymentId>
     }
 
     public Result MarkAsSucceeded(
-        string provider,
-        string providerPaymentId)
+     string provider,
+     string providerPaymentId)
     {
         if (Status == PaymentStatus.Succeeded)
         {
             return Result.Success();
+        }
+
+        if (Status != PaymentStatus.Pending)
+        {
+            return Result.Failure(PaymentErrors.InvalidStatus);
+        }
+
+        if (string.IsNullOrWhiteSpace(provider) ||
+            string.IsNullOrWhiteSpace(providerPaymentId))
+        {
+            return Result.Failure(PaymentErrors.InvalidProviderResponse);
         }
 
         Status = PaymentStatus.Succeeded;
@@ -156,10 +174,15 @@ public sealed class Payment : AggregateRoot<PaymentId>
 
     public Result MarkAsFailed()
     {
-        if (Status == PaymentStatus.Succeeded)
+        if (Status == PaymentStatus.Failed)
+        {
+            return Result.Success();
+        }
+
+        if (Status != PaymentStatus.Pending)
         {
             return Result.Failure(
-                PaymentErrors.AlreadySucceeded);
+                PaymentErrors.InvalidStatus);
         }
 
         Status = PaymentStatus.Failed;

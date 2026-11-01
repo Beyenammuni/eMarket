@@ -1,9 +1,9 @@
 using eMarket.Api.Common;
 using eMarket.Api.Common.Authorization;
+using eMarket.Application.Businesses.Commands.CompleteSellerPlanCheckout;
 using eMarket.Application.Common.Interfaces.Payments;
 using eMarket.Application.Sales.Payments.Commands.CompleteOrderCheckout;
 using eMarket.Application.Sales.Payments.Commands.CreatePayment;
-using eMarket.Application.Sales.Payments.Commands.ProcessPaymentWebhook;
 using eMarket.Application.Sales.Payments.Queries.GetSubscriptionPayment;
 using eMarket.Application.Subscriptions.Commands.CompleteSubscriptionCheckout;
 using eMarket.Application.Subscriptions.Commands.CreateSubscriptionPayment;
@@ -54,29 +54,16 @@ public static class PaymentEndpoints
         group.MapPost(
     "/orders/checkout-callback",
     OrderCheckoutCallback);
+        group.MapPost(
+    "/seller-plans/checkout-callback",
+    SellerPlanCheckoutCallback);
 
-        group.MapGet("/subscriptions/test-products", async (
-    ISubscriptionPaymentGateway gateway,
-    CancellationToken cancellationToken) =>
-        {
-            var result = await gateway.TestListProductsAsync(cancellationToken);
 
-            return Results.Content(
-                result,
-                "application/json");
-        });
 
         group.MapPost(
     "/subscriptions/complete",
     CompleteSubscriptionCheckout)
     .RequireRoles(Roles.Customer);
-
-        // Payment webhook
-        group.MapPost(
-    "/webhook",
-    ProcessWebhook)
-    .RequireAuthorization();
-
 
         return app;
     }
@@ -205,26 +192,7 @@ public static class PaymentEndpoints
 
         return Results.Ok();
     }
-    private static async Task<IResult> ProcessWebhook(
-        [FromBody] PaymentWebhookRequest request,
-        [FromServices] ISender sender,
-        CancellationToken cancellationToken){
 
-        var result = await sender.Send(
-            new ProcessPaymentWebhookCommand(
-                request.PaymentId,
-                request.Provider,
-                request.ProviderPaymentId,
-                request.Succeeded),
-            cancellationToken);
-
-        if (result.IsFailure)
-        {
-            return ApiResults.Failure(result.Error);
-        }
-
-        return Results.Ok();
-    }
     private static async Task<IResult> GetSubscriptionPayment(
     Guid subscriptionId,
     [FromServices] ISender sender,
@@ -287,6 +255,46 @@ public static class PaymentEndpoints
 
         return Results.Redirect(
             $"{returnUrl}{separator}paymentId={paymentId}&status=success");
+
+    }
+    private static async Task<IResult> SellerPlanCheckoutCallback(
+    HttpRequest request,
+    [FromServices] ISender sender,
+    [FromServices] IConfiguration configuration,
+    CancellationToken cancellationToken)
+    {
+        if (!HttpMethods.IsPost(request.Method) ||
+    !request.HasFormContentType)
+        {
+            return Results.BadRequest("Invalid callback request.");
+        }
+        var token = request.Form["token"].FirstOrDefault();
+
+        if (string.IsNullOrWhiteSpace(token))
+            return Results.BadRequest("Seller plan checkout token is required.");
+
+        var paymentIdValue = request.Query["paymentId"].FirstOrDefault();
+
+        if (!Guid.TryParse(paymentIdValue, out var paymentId))
+            return Results.BadRequest("Payment ID is required.");
+
+        var result = await sender.Send(
+            new CompleteSellerPlanCheckoutCommand(paymentId, token),
+            cancellationToken);
+
+        var returnUrl = configuration["Payments:SellerPlanReturnUrl"]
+            ?? "http://localhost:5173/seller/plan-payment-result";
+
+        var separator = returnUrl.Contains('?') ? "&" : "?";
+
+        if (result.IsFailure)
+        {
+            return Results.Redirect(
+                $"{returnUrl}{separator}status=failed&paymentId={paymentId}");
+        }
+
+        return Results.Redirect(
+            $"{returnUrl}{separator}status=success&paymentId={paymentId}");
     }
 }
 
@@ -297,11 +305,6 @@ public sealed record CreatePaymentRequest(
 public sealed record CreateSubscriptionPaymentRequest(
     string ReturnUrl);
 
-public sealed record PaymentWebhookRequest(
-    Guid PaymentId,
-    string Provider,
-    string ProviderPaymentId,
-    bool Succeeded);
 
 public sealed record CompleteSubscriptionCheckoutRequest(
     Guid PaymentId,

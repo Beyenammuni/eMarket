@@ -1,4 +1,5 @@
 using eMarket.Domain.Businesses;
+using eMarket.Domain.Businesses.Entities;
 using eMarket.Domain.Catalog.Products;
 using eMarket.Domain.Identity;
 using eMarket.Domain.Subscriptions;
@@ -34,6 +35,9 @@ public sealed class SubscriptionConfiguration : IEntityTypeConfiguration<Subscri
         builder.Property(x => x.BillingCycle)
             .HasConversion<int>()
             .IsRequired();
+        builder.Property(x => x.IyzicoPricingPlanReferenceCode)
+    .HasMaxLength(100)
+    .IsRequired(false);
 
         builder.Property(x => x.NextDeliveryDate)
             .IsRequired();
@@ -59,7 +63,7 @@ public sealed class SubscriptionConfiguration : IEntityTypeConfiguration<Subscri
         builder.HasOne<eMarket.Domain.Identity.User>()
             .WithMany().HasForeignKey(x => x.UserId)
             .OnDelete(DeleteBehavior.Cascade);
-        builder.HasOne<eMarket.Domain.Businesses.Business>()
+        builder.HasOne<eMarket.Domain.Businesses.Entities.Business>()
             .WithMany().HasForeignKey(x => x.BusinessId)
             .OnDelete(DeleteBehavior.Restrict);
         builder.HasMany(x => x.Items).WithOne()

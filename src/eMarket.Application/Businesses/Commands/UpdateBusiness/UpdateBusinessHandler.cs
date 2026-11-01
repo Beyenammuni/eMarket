@@ -1,3 +1,4 @@
+
 using eMarket.Application.Common.Authorization;
 using eMarket.Application.Common.Interfaces;
 using eMarket.Application.Common.IRepositories;
@@ -15,31 +16,30 @@ internal sealed class UpdateBusinessHandler
     private readonly IBusinessRepository _repository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IBusinessAuthorization _authorization;
-
-
+    private readonly ISensitiveDataProtector _sensitiveDataProtector;
 
     public UpdateBusinessHandler(
         IBusinessRepository repository,
         IUnitOfWork unitOfWork,
-        IBusinessAuthorization authorization)
+        IBusinessAuthorization authorization,
+        ISensitiveDataProtector sensitiveDataProtector)
     {
         _repository = repository;
         _unitOfWork = unitOfWork;
         _authorization = authorization;
+        _sensitiveDataProtector = sensitiveDataProtector;
     }
 
     public async Task<Result<UpdateBusinessResponse>> Handle(
         UpdateBusinessCommand request,
         CancellationToken cancellationToken)
     {
-        var businessId =
-    BusinessId.Create(request.BusinessId);
+        var businessId = BusinessId.Create(request.BusinessId);
 
-        var hasPermission =
-            await _authorization.HasPermissionAsync(
-                businessId,
-                Permissions.Business.Update,
-                cancellationToken);
+        var hasPermission = await _authorization.HasPermissionAsync(
+            businessId,
+            Permissions.Business.Update,
+            cancellationToken);
 
         if (!hasPermission)
         {
@@ -48,7 +48,7 @@ internal sealed class UpdateBusinessHandler
         }
 
         var business = await _repository.GetByIdAsync(
-            BusinessId.Create(request.BusinessId),
+            businessId,
             cancellationToken);
 
         if (business is null)
@@ -57,9 +57,9 @@ internal sealed class UpdateBusinessHandler
                 BusinessErrors.NotFound);
         }
 
-var result = business.Update(
-    BusinessName.Create(request.Name),
-    Enumeration.FromValue<BusinessType>(request.Type));
+        var result = business.Update(
+            BusinessName.Create(request.Name),
+            Enumeration.FromValue<BusinessType>(request.Type));
 
         if (result.IsFailure)
         {
@@ -75,33 +75,44 @@ var result = business.Update(
 
         if (contactResult.IsFailure)
         {
-            return Result<UpdateBusinessResponse>.Failure(contactResult.Error);
+            return Result<UpdateBusinessResponse>.Failure(
+                contactResult.Error);
         }
 
-var legalResult = business.UpdateLegalDetails(
-    request.LegalName,
-    request.IdentityNumber,
-    request.TaxNumber,
-    request.TaxOffice);
+        var identityNumber = string.IsNullOrWhiteSpace(request.IdentityNumber)
+            ? business.MerchantDetails.IdentityNumber
+            : _sensitiveDataProtector.Protect(
+                request.IdentityNumber.Trim());
+
+        var representativeIdentityNumber =
+            string.IsNullOrWhiteSpace(request.RepresentativeIdentityNumber)
+                ? business.MerchantDetails.RepresentativeIdentityNumber
+                : _sensitiveDataProtector.Protect(
+                    request.RepresentativeIdentityNumber.Trim());
+
+        var legalResult = business.UpdateLegalDetails(
+            request.LegalName,
+            identityNumber,
+            request.TaxNumber,
+            request.TaxOffice,
+            request.RepresentativeFullName,
+            representativeIdentityNumber);
 
         if (legalResult.IsFailure)
         {
-            return Result<UpdateBusinessResponse>.Failure(legalResult.Error);
+            return Result<UpdateBusinessResponse>.Failure(
+                legalResult.Error);
         }
-
-
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-return Result<UpdateBusinessResponse>.Success(
-    new UpdateBusinessResponse(
-        business.Id.Value,
-        business.Name.Value,
-        business.Type.Name,
-        business.MerchantDetails.LegalName,
-        business.MerchantDetails.IdentityNumber,
-        business.MerchantDetails.TaxNumber,
-        business.MerchantDetails.TaxOffice));
-
+        return Result<UpdateBusinessResponse>.Success(
+            new UpdateBusinessResponse(
+                business.Id.Value,
+                business.Name.Value,
+                business.Type.Name,
+                business.MerchantDetails.LegalName,
+                business.MerchantDetails.TaxNumber,
+                business.MerchantDetails.TaxOffice));
     }
 }

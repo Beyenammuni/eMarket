@@ -26,21 +26,27 @@ public sealed class ProductRepository : IProductRepository
     }
 
     public async Task<Product?> GetByIdAsync(
-        ProductId id,
-        CancellationToken cancellationToken = default)
+     ProductId id,
+     CancellationToken cancellationToken = default)
     {
         return await _context.Products
+            .Include(x => x.Variants)
+            .Include(x => x.OptionGroups)
+                .ThenInclude(x => x.Options)
             .FirstOrDefaultAsync(
                 x => x.Id == id,
                 cancellationToken);
     }
 
     public async Task<Product?> GetByIdAsync(
-        ProductId id,
-        BusinessId businessId,
-        CancellationToken cancellationToken = default)
+    ProductId id,
+    BusinessId businessId,
+    CancellationToken cancellationToken = default)
     {
         return await _context.Products
+            .Include(x => x.Variants)
+            .Include(x => x.OptionGroups)
+                .ThenInclude(x => x.Options)
             .FirstOrDefaultAsync(
                 x => x.Id == id &&
                      x.BusinessId == businessId,
@@ -87,8 +93,9 @@ public sealed class ProductRepository : IProductRepository
         CancellationToken cancellationToken = default)
     {
         var query = _context.Products
-            .AsNoTracking()
-            .AsQueryable();
+     .AsNoTracking()
+     .Include(x => x.Variants)
+     .AsQueryable();
 
         // Business isolation
         if (businessId is not null)

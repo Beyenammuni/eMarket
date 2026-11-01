@@ -1,8 +1,10 @@
 using eMarket.Domain.Businesses;
 using eMarket.Domain.Catalog.Categories;
 using eMarket.Domain.Catalog.Products.Events;
+using eMarket.Domain.Catalog.Products.Options;
 using eMarket.Domain.Catalog.Products.Rules;
 using eMarket.Domain.Catalog.Products.ValueObjects;
+using eMarket.Domain.Catalog.Products.Variants;
 using eMarket.SharedKernel.Common;
 using eMarket.SharedKernel.Results;
 
@@ -13,7 +15,6 @@ public sealed class Product : AggregateRoot<ProductId>
     private Product()
     {
     }
-
     private Product(
         ProductId id,
         BusinessId businessId,
@@ -59,11 +60,18 @@ public sealed class Product : AggregateRoot<ProductId>
     public DateTime CreatedAt { get; private set; }
 
     public DateTime? UpdatedAt { get; private set; }
-
     public byte[] RowVersion { get; private set; } = [];
 
     public bool IsDeleted { get; private set; }
 
+    private readonly List<ProductVariant> _variants = [];
+
+    public IReadOnlyCollection<ProductVariant> Variants
+        => _variants.AsReadOnly();
+    private readonly List<ProductOptionGroup> _optionGroups = [];
+
+    public IReadOnlyCollection<ProductOptionGroup> OptionGroups
+        => _optionGroups.AsReadOnly();
     public static Result<Product> Create(
         BusinessId businessId,
         CategoryId categoryId,
@@ -244,6 +252,50 @@ public sealed class Product : AggregateRoot<ProductId>
 
         Sku = newSku;
 
+        UpdatedAt = DateTime.UtcNow;
+
+        return Result.Success();
+    }
+    public Result AddVariant(ProductVariant variant)
+    {
+        ArgumentNullException.ThrowIfNull(variant);
+
+        if (variant.ProductId != Id)
+        {
+            throw new ArgumentException(
+                "The variant belongs to a different product.",
+                nameof(variant));
+        }
+
+        if (_variants.Any(x => x.Id == variant.Id))
+        {
+            return Result.Failure(
+                ProductErrors.VariantAlreadyExists);
+        }
+
+        _variants.Add(variant);
+        UpdatedAt = DateTime.UtcNow;
+
+        return Result.Success();
+    }
+    public Result AddOptionGroup(ProductOptionGroup optionGroup)
+    {
+        ArgumentNullException.ThrowIfNull(optionGroup);
+
+        if (optionGroup.ProductId != Id)
+        {
+            throw new ArgumentException(
+                "The option group belongs to a different product.",
+                nameof(optionGroup));
+        }
+
+        if (_optionGroups.Any(x => x.Id == optionGroup.Id))
+        {
+            return Result.Failure(
+                ProductErrors.OptionGroupAlreadyExists);
+        }
+
+        _optionGroups.Add(optionGroup);
         UpdatedAt = DateTime.UtcNow;
 
         return Result.Success();

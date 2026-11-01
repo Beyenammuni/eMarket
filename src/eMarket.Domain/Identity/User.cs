@@ -41,6 +41,7 @@ public sealed class User : AggregateRoot<UserId>
     public bool EmailVerified { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime? LastLoginAt { get; private set; }
+    public string? EncryptedIdentityNumber { get; private set; }
 
     public IReadOnlyCollection<UserRole> Roles => _roles.AsReadOnly();
 
@@ -171,6 +172,20 @@ public sealed class User : AggregateRoot<UserId>
         Status = UserStatus.Suspended;
         AddDomainEvent(
     new UserSuspendedDomainEvent(Id));
+
+        return Result.Success();
+    }
+    public Result SetEncryptedIdentityNumber(string encryptedIdentityNumber)
+    {
+        if (string.IsNullOrWhiteSpace(encryptedIdentityNumber))
+        {
+            return Result.Failure(
+                new Error(
+                    "User.InvalidIdentityNumber",
+                    "Encrypted identity number is required."));
+        }
+
+        EncryptedIdentityNumber = encryptedIdentityNumber;
 
         return Result.Success();
     }

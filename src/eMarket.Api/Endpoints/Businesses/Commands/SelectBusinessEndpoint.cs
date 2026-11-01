@@ -27,12 +27,7 @@ public static class SelectBusinessEndpoint
             })
             .WithName("SelectBusiness")
             .WithTags("Businesses")
-            .RequireAuthorization(policy =>
-                policy.RequireRole(
-                    Roles.Seller,
-                    Roles.StoreManager,
-                    Roles.Admin,
-                    Roles.SuperAdmin));
+            .RequireAuthorization();
 
         return app;
     }

@@ -59,20 +59,44 @@ internal sealed class GetCartQueryHandler
                 cancellationToken);
 
             if (product is null ||
-                product.Status.ToString() != "Active" ||
-                product.StockQuantity <= 0)
+                product.Status.ToString() != "Active")
             {
-                cart.RemoveItem(item.ProductId);
+                cart.RemoveItem(item.ProductId, item.VariantId);
                 changed = true;
                 continue;
             }
 
-            if (item.Quantity.Value > product.StockQuantity)
+            var availableStock = product.StockQuantity;
+
+            if (item.VariantId.HasValue)
+            {
+                var variant = product.Variants.FirstOrDefault(
+                    x => x.Id == item.VariantId.Value &&
+                         x.IsActive);
+
+                if (variant is null)
+                {
+                    cart.RemoveItem(item.ProductId, item.VariantId);
+                    changed = true;
+                    continue;
+                }
+
+                availableStock = variant.StockQuantity;
+            }
+
+            if (availableStock <= 0)
+            {
+                cart.RemoveItem(item.ProductId, item.VariantId);
+                changed = true;
+                continue;
+            }
+
+            if (item.Quantity.Value > availableStock)
             {
                 var quantityResult = cart.ChangeItemQuantity(
                     item.ProductId,
-                Quantity
-                        .Create(product.StockQuantity));
+                    Quantity.Create(availableStock),
+                    item.VariantId);
 
                 if (quantityResult.IsSuccess)
                 {
@@ -94,17 +118,34 @@ internal sealed class GetCartQueryHandler
                 item.ProductId,
                 cancellationToken);
 
+            var variant = item.VariantId.HasValue
+      ? product?.Variants.FirstOrDefault(
+          x => x.Id == item.VariantId.Value)
+      : null;
+
+            var stockQuantity = variant?.StockQuantity
+                ?? product?.StockQuantity
+                ?? 0;
+
+            var name = product?.Name.Value ?? "Ürün mevcut değil";
+
+            if (variant is not null)
+            {
+                name = $"{name} - {variant.Name}";
+            }
+
             items.Add(new CartItemResponse(
-     item.ProductId.Value,
-     item.UnitPrice.Amount,
-     item.UnitPrice.Currency,
-     item.Quantity.Value,
-     item.TotalPrice,
-     product?.StockQuantity ?? 0,
-     product?.Status.ToString() ?? "Unavailable",
-     product?.BusinessId.Value ?? Guid.Empty,
-     product?.Name.Value ?? "Ürün mevcut değil",
-     product?.ImageUrl));
+                item.ProductId.Value,
+                item.VariantId,
+                item.UnitPrice.Amount,
+                item.UnitPrice.Currency,
+                item.Quantity.Value,
+                item.TotalPrice,
+                stockQuantity,
+                product?.Status.ToString() ?? "Unavailable",
+                product?.BusinessId.Value ?? Guid.Empty,
+                name,
+                product?.ImageUrl));
         }
 
         var response = new GetCartResponse(

@@ -31,6 +31,7 @@ internal sealed class GetProductByIdHandler
                 .Failure(ProductErrors.NotFound);
         }
 
+
         return Result<GetProductByIdResponse>.Success(
             new GetProductByIdResponse(
                 product.Id.Value,
@@ -43,6 +44,35 @@ internal sealed class GetProductByIdHandler
                 product.ImageUrl,
                 product.StockQuantity,
                 product.Status.ToString(),
-                product.CreatedAt));
+                product.CreatedAt,
+
+                product.Variants
+                    .Select(v => new ProductVariantResponse(
+                        v.Id,
+                        v.Name,
+                        v.Sku,
+                        v.Price,
+                        v.StockQuantity,
+                        v.IsActive))
+                    .ToList(),
+
+                product.OptionGroups
+                    .Select(g => new ProductOptionGroupResponse(
+                        g.Id,
+                        g.Name,
+                        g.IsRequired,
+                        g.MinSelections,
+                        g.MaxSelections,
+                        g.DisplayOrder,
+                        g.Options
+                            .Select(o => new ProductOptionResponse(
+                                o.Id,
+                                o.Name,
+                                o.AdditionalPrice,
+                                o.IsActive,
+                                o.DisplayOrder))
+                            .ToList()))
+                    .ToList()));
+
     }
 }

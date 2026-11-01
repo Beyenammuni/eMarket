@@ -5,5 +5,6 @@ namespace eMarket.Application.Sales.Carts.Commands.UpdateCartItem;
 
 public sealed record UpdateCartItemCommand(
     Guid ProductId,
-    int Quantity)
+    int Quantity,
+    Guid? VariantId = null)
     : IRequest<Result>;

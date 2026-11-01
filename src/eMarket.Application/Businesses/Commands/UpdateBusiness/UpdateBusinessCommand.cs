@@ -13,5 +13,7 @@ public sealed record UpdateBusinessCommand(
     string LegalName,
     string? IdentityNumber,
     string? TaxNumber,
-    string? TaxOffice)
+    string? TaxOffice,
+    string? RepresentativeFullName = null,
+string? RepresentativeIdentityNumber = null)
     : IRequest<Result<UpdateBusinessResponse>>;

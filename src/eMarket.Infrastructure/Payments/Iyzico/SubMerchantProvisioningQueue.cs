@@ -34,4 +34,3 @@ internal sealed class SubMerchantProvisioningQueue
             cancellationToken);
     }
 }
-

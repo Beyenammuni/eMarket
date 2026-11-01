@@ -37,9 +37,9 @@ internal sealed class RemoveFromCartCommandHandler
             return Result.Failure(
                 CartErrors.EmptyCart);
         }
-
         var result = cart.RemoveItem(
-            ProductId.Create(request.ProductId));
+            ProductId.Create(request.ProductId),
+            request.VariantId);
 
         if (result.IsFailure)
         {

@@ -81,12 +81,13 @@ public static class CartEndpoints
     }
 
     private static async Task<IResult> RemoveFromCart(
-        Guid productId,
-        [FromServices] ISender sender,
-        CancellationToken cancellationToken)
+     Guid productId,
+     [FromQuery] Guid? variantId,
+     [FromServices] ISender sender,
+     CancellationToken cancellationToken)
     {
         var result = await sender.Send(
-            new RemoveFromCartCommand(productId),
+            new RemoveFromCartCommand(productId, variantId),
             cancellationToken);
 
         if (result.IsFailure)
@@ -96,7 +97,6 @@ public static class CartEndpoints
 
         return Results.NoContent();
     }
-
     private static async Task<IResult> ClearCart(
         [FromServices] ISender sender,
         CancellationToken cancellationToken)
@@ -119,8 +119,9 @@ public static class CartEndpoints
         CancellationToken cancellationToken)
     {
         var command = new UpdateCartItemCommand(
-            productId,
-            request.Quantity);
+    productId,
+    request.Quantity,
+    request.VariantId);
 
         var result = await sender.Send(
             command,

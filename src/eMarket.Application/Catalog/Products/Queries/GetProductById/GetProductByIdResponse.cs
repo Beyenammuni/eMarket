@@ -1,4 +1,3 @@
-using eMarket.Domain.Common;
 
 namespace eMarket.Application.Catalog.Products.Queries.GetProductById;
 
@@ -13,4 +12,30 @@ public sealed record GetProductByIdResponse(
     string? ImageUrl,
     int StockQuantity,
     string Status,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    IReadOnlyCollection<ProductVariantResponse> Variants,
+    IReadOnlyCollection<ProductOptionGroupResponse> OptionGroups);
+
+public sealed record ProductVariantResponse(
+    Guid Id,
+    string Name,
+    string? Sku,
+    decimal Price,
+    int StockQuantity,
+    bool IsActive);
+
+public sealed record ProductOptionGroupResponse(
+    Guid Id,
+    string Name,
+    bool IsRequired,
+    int MinSelections,
+    int MaxSelections,
+    int DisplayOrder,
+    IReadOnlyCollection<ProductOptionResponse> Options);
+
+public sealed record ProductOptionResponse(
+    Guid Id,
+    string Name,
+    decimal AdditionalPrice,
+    bool IsActive,
+    int DisplayOrder);

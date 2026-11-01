@@ -4,5 +4,6 @@ using MediatR;
 namespace eMarket.Application.Sales.Carts.Commands.RemoveFromCart;
 
 public sealed record RemoveFromCartCommand(
-    Guid ProductId)
+    Guid ProductId,
+    Guid? VariantId = null)
     : IRequest<Result>;

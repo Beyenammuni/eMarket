@@ -10,6 +10,7 @@ public sealed record GetCartResponse(
 
 public sealed record CartItemResponse(
     Guid ProductId,
+    Guid? VariantId,
     decimal UnitPrice,
     Currency Currency,
     int Quantity,

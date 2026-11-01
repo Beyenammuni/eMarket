@@ -6,7 +6,7 @@ using eMarket.Domain.Identity;
 using eMarket.SharedKernel.Common;
 using eMarket.SharedKernel.Results;
 
-namespace eMarket.Domain.Businesses;
+namespace eMarket.Domain.Businesses.Entities;
 
 public sealed class Business : AggregateRoot<BusinessId>
 {
@@ -57,6 +57,7 @@ public sealed class Business : AggregateRoot<BusinessId>
 
     public bool SupportsSubscriptions { get; private set; } = false;
 
+    public bool IsApproved { get; private set; }
     public IReadOnlyCollection<BusinessMember> Members =>
         _members.AsReadOnly();
 
@@ -160,12 +161,35 @@ public sealed class Business : AggregateRoot<BusinessId>
         return Result.Success();
     }
 
+
     public Result Activate()
     {
-        if (Status == BusinessStatus.Active)
+        if (Status != BusinessStatus.Pending)
         {
             return Result.Failure(
-                BusinessErrors.AlreadyActive);
+                new Error(
+                    "Business.Status.InvalidActivation",
+                    "Only pending businesses can be activated."));
+        }
+
+        if (!IsApproved)
+        {
+            return Result.Failure(
+                new Error(
+                    "Business.NotApproved",
+                    "Business must be approved before activation."));
+        }
+
+        if (string.IsNullOrWhiteSpace(IyzicoSubMerchantKey) ||
+            !string.Equals(
+                IyzicoSubMerchantStatus,
+                "SUCCESS",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return Result.Failure(
+                new Error(
+                    "Business.PaymentSetupIncomplete",
+                    "iyzico sub-merchant setup must succeed before activation."));
         }
 
         Status = BusinessStatus.Active;
@@ -175,6 +199,7 @@ public sealed class Business : AggregateRoot<BusinessId>
 
         return Result.Success();
     }
+
 
     public Result Suspend()
     {
@@ -383,11 +408,13 @@ public Result UpdateContactDetails(
 
         return Result.Success();
     }
-public Result UpdateLegalDetails(
-    string legalName,
-    string? identityNumber,
-    string? taxNumber,
-    string? taxOffice)
+    public Result UpdateLegalDetails(
+        string legalName,
+        string? identityNumber,
+        string? taxNumber,
+        string? taxOffice,
+        string? representativeFullName,
+        string? representativeIdentityNumber)
     {
         var result = MerchantDetails.UpdateLegalDetails(
             legalName,
@@ -416,6 +443,28 @@ public Result UpdateLegalDetails(
         return _members.FirstOrDefault(x =>
             x.UserId == userId &&
             x.IsActive);
+    }
+    public Result Approve()
+    {
+        if (Status != BusinessStatus.Pending)
+        {
+            return Result.Failure(
+                new Error(
+                    "Business.Status.InvalidApproval",
+                    "Only pending businesses can be approved."));
+        }
+
+        if (IsApproved)
+        {
+            return Result.Failure(
+                new Error(
+                    "Business.AlreadyApproved",
+                    "This business is already approved."));
+        }
+
+        IsApproved = true;
+
+        return Result.Success();
     }
 
     private bool HasActiveMember(

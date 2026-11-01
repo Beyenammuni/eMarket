@@ -181,6 +181,7 @@ app.MapGetSellerDashboardEndpoint();
 app.MapAuthEndpoints();
 app.MapSubscriptionEndpoints();
 app.MapAdminEndpoints();
+app.MapSellerPlanEndpoints();
 app.MapApproveBusinessEndpoint();
 app.MapCloseBusinessEndpoint();
 app.MapUserEndpoints();

@@ -1,4 +1,5 @@
 using eMarket.Domain.Businesses;
+using eMarket.Domain.Businesses.Entities;
 using eMarket.Domain.Catalog.Products;
 using eMarket.Domain.Catalog.Products.ValueObjects;
 using eMarket.Domain.Identity;
@@ -103,9 +104,15 @@ public sealed class OrderConfiguration
                 item.WithOwner()
                     .HasForeignKey("OrderId");
 
-                item.HasKey(
-                    "OrderId",
-                    "ProductId");
+                item.Property<Guid>("Id")
+    .ValueGeneratedNever();
+
+                item.HasKey("OrderId", "Id");
+
+                item.Property(x => x.VariantId);
+
+                item.Property(x => x.VariantName)
+                    .HasMaxLength(100);
 
                 item.Property(x => x.ProductId)
                     .HasConversion(

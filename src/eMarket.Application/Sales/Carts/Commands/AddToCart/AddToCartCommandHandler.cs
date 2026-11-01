@@ -1,6 +1,7 @@
 using eMarket.Application.Common.Interfaces;
 using eMarket.Application.Common.IRepositories;
 using eMarket.Domain.Catalog.Products;
+using eMarket.Domain.Catalog.Products.ValueObjects;
 using eMarket.Domain.Identity;
 using eMarket.Domain.Sales.Carts;
 using eMarket.Domain.Sales.Carts.ValueObjects;
@@ -29,32 +30,45 @@ internal sealed class AddToCartCommandHandler
         _currentUser = currentUser;
     }
 
+
     public async Task<Result> Handle(
-      AddToCartCommand request,
-      CancellationToken cancellationToken)
+        AddToCartCommand request,
+        CancellationToken cancellationToken)
     {
         var userId = _currentUser.UserId;
-        Console.WriteLine($"ADD TO CART USER ID: {userId}");
+
         if (userId is null)
-        {
-            return Result.Failure(
-                CartErrors.Unauthorized);
-        }
+            return Result.Failure(CartErrors.Unauthorized);
+
         var product = await _productRepository.GetByIdAsync(
             ProductId.Create(request.ProductId),
             cancellationToken);
 
         if (product is null)
-        {
-            return Result.Failure(
-                ProductErrors.NotFound);
-        }
+            return Result.Failure(ProductErrors.NotFound);
 
-        if (product.Status != ProductStatus.Active)
+        if (product.Status != ProductStatus.Active || product.IsDeleted)
+            return Result.Failure(ProductErrors.ProductNotAvailable);
+
+        var unitPrice = product.Price;
+        var availableStock = product.StockQuantity;
+        Guid? variantId = null;
+        string? variantName = null;
+
+        if (request.VariantId.HasValue)
         {
-            return Result.Failure(
-                ProductErrors.ProductNotAvailable);
+            var variant = product.Variants.FirstOrDefault(
+                x => x.Id == request.VariantId.Value);
+
+            if (variant is null || !variant.IsActive)
+                return Result.Failure(ProductErrors.NotFound);
+
+            variantId = variant.Id;
+            variantName = variant.Name;
+            unitPrice = Money.Create(variant.Price, product.Price.Currency);
+            availableStock = variant.StockQuantity;
         }
+        Console.WriteLine($"ProductId: {request.ProductId}, VariantId: {request.VariantId}");
 
         var cart = await _cartRepository.GetActiveByUserAsync(
             userId,
@@ -65,31 +79,25 @@ internal sealed class AddToCartCommandHandler
             var cartResult = Cart.Create(userId);
 
             if (cartResult.IsFailure)
-            {
-                return Result.Failure(
-                    cartResult.Error);
-            }
+                return Result.Failure(cartResult.Error);
 
-            cart = cartResult.Value;
+            cart = cartResult.Value!;
 
-            await _cartRepository.AddAsync(
-                cart,
-                cancellationToken);
+            await _cartRepository.AddAsync(cart, cancellationToken);
         }
 
         var result = cart.AddItem(
             product.Id,
-            product.Price,
+            variantId,
+            variantName,
+            unitPrice,
             Quantity.Create(request.Quantity),
-            product.StockQuantity);
+            availableStock);
 
         if (result.IsFailure)
-        {
             return result;
-        }
 
-        await _unitOfWork.SaveChangesAsync(
-            cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result.Success();
     }

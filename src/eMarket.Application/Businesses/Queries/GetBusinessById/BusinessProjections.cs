@@ -1,4 +1,4 @@
-using eMarket.Domain.Businesses;
+using eMarket.Domain.Businesses.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace eMarket.Application.Businesses.Queries.GetBusinessById;
@@ -23,7 +23,6 @@ public static IQueryable<GetBusinessByIdResponse> ToGetBusinessByIdResponse(
             x.MerchantDetails.City,
 x.MerchantDetails.Country,
 x.MerchantDetails.LegalName,
-x.MerchantDetails.IdentityNumber,
 x.MerchantDetails.TaxNumber,
 x.MerchantDetails.TaxOffice));
     }

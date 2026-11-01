@@ -108,6 +108,7 @@ public static class BusinessRolePermissions
             [
                 Business.View,
                 Products.View,
+                Orders.View,
                 Categories.View
             ]
         };

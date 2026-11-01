@@ -71,7 +71,9 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
             phone.WithOwner();
         });
 
-
+        builder.Property(x => x.EncryptedIdentityNumber)
+    .HasMaxLength(2000)
+    .IsRequired(false);
 
         builder.Property(x => x.Status)
             .HasConversion(

@@ -1,3 +1,4 @@
+
 using eMarket.SharedKernel.Results;
 using MediatR;
 
@@ -5,5 +6,6 @@ namespace eMarket.Application.Sales.Carts.Commands.AddToCart;
 
 public sealed record AddToCartCommand(
     Guid ProductId,
-    int Quantity)
+    int Quantity,
+    Guid? VariantId = null)
     : IRequest<Result>;

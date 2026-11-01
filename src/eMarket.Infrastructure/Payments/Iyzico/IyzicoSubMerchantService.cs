@@ -16,14 +16,17 @@ internal sealed class IyzicoSubMerchantService
     private readonly IBusinessRepository _businessRepository;
     private readonly IyzicoOptions _options;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ISensitiveDataProtector _sensitiveDataProtector;
     public IyzicoSubMerchantService(
         IBusinessRepository businessRepository,
         IOptions<IyzicoOptions> options,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        ISensitiveDataProtector sensitiveDataProtector)
     {
         _businessRepository = businessRepository;
         _options = options.Value;
         _unitOfWork = unitOfWork;
+        _sensitiveDataProtector = sensitiveDataProtector;
     }
 
     public async Task<SubMerchantProvisioningResult> CreateAsync(
@@ -269,7 +272,9 @@ internal sealed class IyzicoSubMerchantService
             GsmNumber = merchant.PhoneNumber,
             Name = merchant.LegalName,
             Iban = merchant.Iban,
-            IdentityNumber = merchant.IdentityNumber,
+            IdentityNumber =
+    _sensitiveDataProtector.Unprotect(
+        merchant.IdentityNumber),
             Currency = Currency.TRY.ToString()
         };
 

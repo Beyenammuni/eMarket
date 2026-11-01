@@ -75,20 +75,23 @@ public sealed class Cart : AggregateRoot<CartId>
         AddDomainEvent(new CartClearedDomainEvent(Id));
         return Result.Success();
     }
+
     public Result AddItem(
-     ProductId productId,
-     Money unitPrice,
-     Quantity quantity,
-     int availableStock)
+        ProductId productId,
+        Guid? variantId,
+        string? variantName,
+        Money unitPrice,
+        Quantity quantity,
+        int availableStock)
     {
         if (Status != CartStatus.Active)
         {
-            return Result.Failure(
-                CartErrors.AlreadyCheckedOut);
+            return Result.Failure(CartErrors.AlreadyCheckedOut);
         }
 
-        var existingItem = _items.FirstOrDefault(
-            x => x.ProductId == productId);
+        var existingItem = _items.FirstOrDefault(x =>
+            x.ProductId == productId &&
+            x.VariantId == variantId);
 
         if (existingItem is not null)
         {
@@ -97,15 +100,11 @@ public sealed class Cart : AggregateRoot<CartId>
 
             if (newQuantity > availableStock)
             {
-                return Result.Failure(
-                    CartErrors.InsufficientStock);
+                return Result.Failure(CartErrors.InsufficientStock);
             }
 
-            existingItem.IncreaseQuantity(
-                quantity.Value);
-
+            existingItem.IncreaseQuantity(quantity.Value);
             existingItem.UpdatePrice(unitPrice);
-
             UpdatedAt = DateTime.UtcNow;
 
             return Result.Success();
@@ -113,25 +112,30 @@ public sealed class Cart : AggregateRoot<CartId>
 
         if (quantity.Value > availableStock)
         {
-            return Result.Failure(
-                CartErrors.InsufficientStock);
+            return Result.Failure(CartErrors.InsufficientStock);
         }
 
-        _items.Add(
-            new CartItem(
-                Id,
-                productId,
-                unitPrice,
-                quantity));
+        _items.Add(new CartItem(
+            Id,
+            productId,
+            variantId,
+            variantName,
+            unitPrice,
+            quantity));
 
         UpdatedAt = DateTime.UtcNow;
-        AddDomainEvent(new CartItemAddedDomainEvent(Id, productId));
+
+        AddDomainEvent(
+            new CartItemAddedDomainEvent(Id, productId));
 
         return Result.Success();
     }
 
 
-    public Result RemoveItem(ProductId productId)
+
+    public Result RemoveItem(
+    ProductId productId,
+    Guid? variantId = null)
     {
         if (Status != CartStatus.Active)
         {
@@ -140,7 +144,8 @@ public sealed class Cart : AggregateRoot<CartId>
         }
 
         var item = _items.FirstOrDefault(
-            x => x.ProductId == productId);
+            x => x.ProductId == productId &&
+                 x.VariantId == variantId);
 
         if (item is null)
         {
@@ -151,15 +156,17 @@ public sealed class Cart : AggregateRoot<CartId>
         _items.Remove(item);
 
         UpdatedAt = DateTime.UtcNow;
-        AddDomainEvent(new CartItemRemovedDomainEvent(Id, productId));
 
+        AddDomainEvent(
+            new CartItemRemovedDomainEvent(Id, productId));
 
         return Result.Success();
     }
 
     public Result ChangeItemQuantity(
-        ProductId productId,
-        Quantity quantity)
+     ProductId productId,
+     Quantity quantity,
+     Guid? variantId = null)
     {
         if (Status != CartStatus.Active)
         {
@@ -168,7 +175,8 @@ public sealed class Cart : AggregateRoot<CartId>
         }
 
         var item = _items.FirstOrDefault(
-            x => x.ProductId == productId);
+            x => x.ProductId == productId &&
+                 x.VariantId == variantId);
 
         if (item is null)
         {
@@ -179,8 +187,12 @@ public sealed class Cart : AggregateRoot<CartId>
         item.ChangeQuantity(quantity);
 
         UpdatedAt = DateTime.UtcNow;
-        AddDomainEvent(new CartItemQuantityChangedDomainEvent(Id, productId, quantity));
 
+        AddDomainEvent(
+            new CartItemQuantityChangedDomainEvent(
+                Id,
+                productId,
+                quantity));
 
         return Result.Success();
     }

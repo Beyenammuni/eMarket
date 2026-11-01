@@ -24,6 +24,8 @@ internal sealed class CreateSubscriptionPaymentCommandHandler
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUser _currentUser;
     private readonly IConfiguration _configuration;
+    private readonly IUserRepository _userRepository;
+    private readonly ICustomerIdentityProtector _identityProtector;
 
     public CreateSubscriptionPaymentCommandHandler(
         ISubscriptionDbContext subscriptionContext,
@@ -34,7 +36,9 @@ internal sealed class CreateSubscriptionPaymentCommandHandler
 
         IUnitOfWork unitOfWork,
         ICurrentUser currentUser,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IUserRepository userRepository,
+        ICustomerIdentityProtector identityProtector)
     {
         _subscriptionContext = subscriptionContext;
         _catalog = catalog;
@@ -44,6 +48,8 @@ internal sealed class CreateSubscriptionPaymentCommandHandler
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _configuration = configuration;
+        _userRepository = userRepository;
+        _identityProtector = identityProtector;
     }
 
     public async Task<Result<CreateSubscriptionPaymentResponse>> Handle(
@@ -269,7 +275,33 @@ internal sealed class CreateSubscriptionPaymentCommandHandler
             nameParts.Length > 1
                 ? nameParts[^1]
                 : nameParts[0];
+        var user = await _userRepository.GetByIdAsync(
+    _currentUser.UserId!,
+    cancellationToken);
 
+        if (user is null ||
+            string.IsNullOrWhiteSpace(user.EncryptedIdentityNumber))
+        {
+            return Result<CreateSubscriptionPaymentResponse>.Failure(
+                new Error(
+                    "Payment.CustomerIdentityRequired",
+                    "Please provide your identity number before payment."));
+        }
+
+        string identityNumber;
+
+        try
+        {
+            identityNumber = _identityProtector.Unprotect(
+                user.EncryptedIdentityNumber);
+        }
+        catch
+        {
+            return Result<CreateSubscriptionPaymentResponse>.Failure(
+                new Error(
+                    "Payment.CustomerIdentityUnavailable",
+                    "Customer identity could not be verified."));
+        }
         var buyer = new PaymentBuyer(
             _currentUser.UserId.Value,
             buyerName,
@@ -348,7 +380,24 @@ internal sealed class CreateSubscriptionPaymentCommandHandler
                     gatewayResult.Error ??
                     "Payment provider failed."));
         }
+        if (string.IsNullOrWhiteSpace(
+        gatewayResult.PricingPlanReferenceCode))
+        {
+            return Result<CreateSubscriptionPaymentResponse>.Failure(
+                new Error(
+                    "Payment.PricingPlanReferenceMissing",
+                    "The iyzico pricing plan reference is missing."));
+        }
 
+        var planResult =
+            subscription.SetIyzicoPricingPlanReference(
+                gatewayResult.PricingPlanReferenceCode);
+
+        if (planResult.IsFailure)
+        {
+            return Result<CreateSubscriptionPaymentResponse>.Failure(
+                planResult.Error);
+        }
         await _unitOfWork.SaveChangesAsync(
             cancellationToken);
 

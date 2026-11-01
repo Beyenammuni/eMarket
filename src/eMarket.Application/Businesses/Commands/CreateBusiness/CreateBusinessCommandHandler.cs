@@ -1,7 +1,9 @@
+
 using eMarket.Application.Common.Interfaces;
 using eMarket.Application.Common.Interfaces.Payments;
 using eMarket.Application.Common.IRepositories;
 using eMarket.Domain.Businesses;
+using eMarket.Domain.Businesses.Entities;
 using eMarket.Domain.Businesses.ValueObjects;
 using eMarket.SharedKernel.Common;
 using eMarket.SharedKernel.Results;
@@ -16,17 +18,20 @@ public sealed class CreateBusinessCommandHandler
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUser _currentUser;
     private readonly ISubMerchantProvisioningQueue _subMerchantProvisioningQueue;
+    private readonly ISensitiveDataProtector _sensitiveDataProtector;
 
     public CreateBusinessCommandHandler(
         IBusinessRepository businessRepository,
         IUnitOfWork unitOfWork,
         ICurrentUser currentUser,
-        ISubMerchantProvisioningQueue subMerchantProvisioningQueue)
+        ISubMerchantProvisioningQueue subMerchantProvisioningQueue,
+        ISensitiveDataProtector sensitiveDataProtector)
     {
         _businessRepository = businessRepository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _subMerchantProvisioningQueue = subMerchantProvisioningQueue;
+        _sensitiveDataProtector = sensitiveDataProtector;
     }
 
     public async Task<Result<CreateBusinessResponse>> Handle(
@@ -47,14 +52,13 @@ public sealed class CreateBusinessCommandHandler
             Enumeration.FromValue<BusinessType>(request.Type);
 
         var merchantType =
-            Enumeration.FromValue<MerchantType>(
-                request.MerchantType);
+            Enumeration.FromValue<MerchantType>(request.MerchantType);
 
         var merchantDetailsResult =
             BusinessMerchantDetails.Create(
                 merchantType,
                 request.LegalName,
-                request.IdentityNumber,
+                ProtectIfPresent(request.IdentityNumber),
                 request.TaxNumber,
                 request.TaxOffice,
                 request.Email,
@@ -62,7 +66,9 @@ public sealed class CreateBusinessCommandHandler
                 request.Address,
                 request.City,
                 request.Country,
-                request.Iban);
+                request.Iban,
+                request.RepresentativeFullName,
+                ProtectIfPresent(request.RepresentativeIdentityNumber));
 
         if (merchantDetailsResult.IsFailure)
         {
@@ -70,8 +76,7 @@ public sealed class CreateBusinessCommandHandler
                 merchantDetailsResult.Error);
         }
 
-        var merchantDetails =
-            merchantDetailsResult.Value;
+        var merchantDetails = merchantDetailsResult.Value;
 
         if (merchantDetails is null)
         {
@@ -126,5 +131,12 @@ public sealed class CreateBusinessCommandHandler
                 business.Name.Value,
                 business.Type.Id,
                 business.Type.Name));
+    }
+
+    private string? ProtectIfPresent(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value)
+            ? null
+            : _sensitiveDataProtector.Protect(value.Trim());
     }
 }

@@ -33,59 +33,52 @@ public class CartTests
     {
         var cart = CreateCart();
 
-        cart.DomainEvents
-            .Should()
-            .ContainSingle(
-                x => x is CartCreatedDomainEvent);
+        cart.DomainEvents.Should()
+            .ContainSingle(x => x is CartCreatedDomainEvent);
     }
 
     [Fact]
     public void AddItem_Should_Add_Item()
     {
         var cart = CreateCart();
-
         var productId = ProductId.New();
 
         var result = cart.AddItem(
             productId,
+            null,
+            null,
             Money.Create(100m, Currency.TRY),
-            Quantity.Create(2), 10);
+            Quantity.Create(2),
+            10);
 
         result.IsSuccess.Should().BeTrue();
-
         cart.Items.Should().ContainSingle();
 
-        cart.Items.First()
-            .ProductId
-            .Should()
-            .Be(productId);
-
-        cart.Items.First()
-            .Quantity.Value
-            .Should()
-            .Be(2);
+        var item = cart.Items.First();
+        item.ProductId.Should().Be(productId);
+        item.VariantId.Should().BeNull();
+        item.VariantName.Should().BeNull();
+        item.Quantity.Value.Should().Be(2);
     }
 
     [Fact]
     public void AddItem_Should_Raise_DomainEvent()
     {
         var cart = CreateCart();
-
         cart.ClearDomainEvents();
 
-        var productId = ProductId.New();
-
         var result = cart.AddItem(
-            productId,
+            ProductId.New(),
+            null,
+            null,
             Money.Create(100m, Currency.TRY),
-            Quantity.Create(2), 10);
+            Quantity.Create(2),
+            10);
 
         result.IsSuccess.Should().BeTrue();
 
-        cart.DomainEvents
-            .Should()
-            .ContainSingle(
-                x => x is CartItemAddedDomainEvent);
+        cart.DomainEvents.Should()
+            .ContainSingle(x => x is CartItemAddedDomainEvent);
     }
 
     [Fact]
@@ -95,6 +88,8 @@ public class CartTests
 
         var act = () => cart.AddItem(
             ProductId.New(),
+            null,
+            null,
             Money.Create(100m, Currency.TRY),
             Quantity.Create(0),
             10);
@@ -105,21 +100,78 @@ public class CartTests
     }
 
     [Fact]
-    public void RemoveItem_Should_Remove_Item()
+    public void AddItem_Should_Fail_When_Quantity_Exceeds_Stock()
     {
         var cart = CreateCart();
 
+        var result = cart.AddItem(
+            ProductId.New(),
+            null,
+            null,
+            Money.Create(100m, Currency.TRY),
+            Quantity.Create(3),
+            2);
+
+        result.IsFailure.Should().BeTrue();
+        cart.Items.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AddItem_Should_Keep_Different_Variants_As_Separate_Items()
+    {
+        var cart = CreateCart();
+        var productId = ProductId.New();
+        var firstVariantId = Guid.NewGuid();
+        var secondVariantId = Guid.NewGuid();
+        var price = Money.Create(100m, Currency.TRY);
+
+        cart.AddItem(
+            productId, firstVariantId, "500 g",
+            price, Quantity.Create(1), 10);
+
+        cart.AddItem(
+            productId, secondVariantId, "1 kg",
+            price, Quantity.Create(1), 10);
+
+        cart.Items.Should().HaveCount(2);
+        cart.Items.Select(x => x.VariantId)
+            .Should().Contain(new Guid?[] { firstVariantId, secondVariantId });
+    }
+
+    [Fact]
+    public void AddItem_Should_Increase_Quantity_For_Same_Variant()
+    {
+        var cart = CreateCart();
+        var productId = ProductId.New();
+        var variantId = Guid.NewGuid();
+        var price = Money.Create(100m, Currency.TRY);
+
+        cart.AddItem(
+            productId, variantId, "500 g",
+            price, Quantity.Create(2), 10);
+
+        cart.AddItem(
+            productId, variantId, "500 g",
+            price, Quantity.Create(3), 10);
+
+        cart.Items.Should().ContainSingle();
+        cart.Items.First().Quantity.Value.Should().Be(5);
+    }
+
+    [Fact]
+    public void RemoveItem_Should_Remove_Item()
+    {
+        var cart = CreateCart();
         var productId = ProductId.New();
 
         cart.AddItem(
-            productId,
+            productId, null, null,
             Money.Create(100m, Currency.TRY),
             Quantity.Create(2), 10);
 
         var result = cart.RemoveItem(productId);
 
         result.IsSuccess.Should().BeTrue();
-
         cart.Items.Should().BeEmpty();
     }
 
@@ -127,11 +179,10 @@ public class CartTests
     public void RemoveItem_Should_Raise_DomainEvent()
     {
         var cart = CreateCart();
-
         var productId = ProductId.New();
 
         cart.AddItem(
-            productId,
+            productId, null, null,
             Money.Create(100m, Currency.TRY),
             Quantity.Create(2), 10);
 
@@ -140,11 +191,8 @@ public class CartTests
         var result = cart.RemoveItem(productId);
 
         result.IsSuccess.Should().BeTrue();
-
-        cart.DomainEvents
-            .Should()
-            .ContainSingle(
-                x => x is CartItemRemovedDomainEvent);
+        cart.DomainEvents.Should()
+            .ContainSingle(x => x is CartItemRemovedDomainEvent);
     }
 
     [Fact]
@@ -152,8 +200,7 @@ public class CartTests
     {
         var cart = CreateCart();
 
-        var result = cart.RemoveItem(
-            ProductId.New());
+        var result = cart.RemoveItem(ProductId.New());
 
         result.IsFailure.Should().BeTrue();
     }
@@ -162,50 +209,39 @@ public class CartTests
     public void ChangeItemQuantity_Should_Change_Quantity()
     {
         var cart = CreateCart();
-
         var productId = ProductId.New();
 
         cart.AddItem(
-            productId,
+            productId, null, null,
             Money.Create(100m, Currency.TRY),
             Quantity.Create(2), 10);
 
         var result = cart.ChangeItemQuantity(
-            productId,
-            Quantity.Create(5));
+            productId, Quantity.Create(5));
 
         result.IsSuccess.Should().BeTrue();
-
-        cart.Items.First()
-            .Quantity.Value
-            .Should()
-            .Be(5);
+        cart.Items.First().Quantity.Value.Should().Be(5);
     }
 
     [Fact]
     public void ChangeItemQuantity_Should_Raise_DomainEvent()
     {
         var cart = CreateCart();
-
         var productId = ProductId.New();
 
         cart.AddItem(
-            productId,
+            productId, null, null,
             Money.Create(100m, Currency.TRY),
             Quantity.Create(2), 10);
 
         cart.ClearDomainEvents();
 
         var result = cart.ChangeItemQuantity(
-            productId,
-            Quantity.Create(5));
+            productId, Quantity.Create(5));
 
         result.IsSuccess.Should().BeTrue();
-
-        cart.DomainEvents
-            .Should()
-            .ContainSingle(
-                x => x is CartItemQuantityChangedDomainEvent);
+        cart.DomainEvents.Should()
+            .ContainSingle(x => x is CartItemQuantityChangedDomainEvent);
     }
 
     [Fact]
@@ -214,19 +250,18 @@ public class CartTests
         var cart = CreateCart();
 
         cart.AddItem(
-            ProductId.New(),
+            ProductId.New(), null, null,
             Money.Create(100m, Currency.TRY),
             Quantity.Create(2), 10);
 
         cart.AddItem(
-            ProductId.New(),
+            ProductId.New(), null, null,
             Money.Create(200m, Currency.TRY),
             Quantity.Create(1), 10);
 
         var result = cart.Clear();
 
         result.IsSuccess.Should().BeTrue();
-
         cart.Items.Should().BeEmpty();
     }
 
@@ -236,7 +271,7 @@ public class CartTests
         var cart = CreateCart();
 
         cart.AddItem(
-            ProductId.New(),
+            ProductId.New(), null, null,
             Money.Create(100m, Currency.TRY),
             Quantity.Create(2), 10);
 
@@ -245,11 +280,8 @@ public class CartTests
         var result = cart.Clear();
 
         result.IsSuccess.Should().BeTrue();
-
-        cart.DomainEvents
-            .Should()
-            .ContainSingle(
-                x => x is CartClearedDomainEvent);
+        cart.DomainEvents.Should()
+            .ContainSingle(x => x is CartClearedDomainEvent);
     }
 
     [Fact]
@@ -264,7 +296,6 @@ public class CartTests
 
     private static Cart CreateCart()
     {
-        return Cart.Create(
-            UserId.New()).Value;
+        return Cart.Create(UserId.New()).Value;
     }
 }

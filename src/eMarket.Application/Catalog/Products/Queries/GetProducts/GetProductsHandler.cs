@@ -37,6 +37,7 @@ internal sealed class GetProductsHandler
             request.SortDescending,
             cancellationToken);
 
+
         var items = products
             .Select(product => new ProductDto(
                 product.Id.Value,
@@ -46,7 +47,15 @@ internal sealed class GetProductsHandler
                 product.Price.Amount,
                 product.ImageUrl,
                 product.StockQuantity,
-                product.Status.ToString()))
+                product.Status.ToString(),
+                product.Variants
+                    .Select(variant => new ProductVariantDto(
+                        variant.Id,
+                        variant.Name,
+                        variant.Price,
+                        variant.StockQuantity,
+                        variant.IsActive))
+                    .ToList()))
             .ToList();
 
         return Result<GetProductsResponse>.Success(

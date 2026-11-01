@@ -1,5 +1,4 @@
 using eMarket.Domain.Catalog.Products;
-using eMarket.Domain.Catalog.Products.ValueObjects;
 using eMarket.Domain.Sales.Carts;
 using eMarket.Domain.Sales.Carts.Entities;
 using eMarket.Domain.Sales.Carts.ValueObjects;
@@ -15,11 +14,17 @@ public sealed class CartItemConfiguration
     {
         builder.ToTable("CartItems");
 
-        builder.HasKey(x => new
-        {
-            x.CartId,
-            x.ProductId
-        });
+        builder.HasKey(x => x.Id);
+
+        builder.Property(x => x.Id)
+            .ValueGeneratedNever();
+
+        builder.Property(x => x.VariantId)
+    .IsRequired(false);
+
+        builder.Property(x => x.VariantName)
+            .HasMaxLength(100)
+            .IsRequired(false);
 
         builder.Property(x => x.CartId)
             .HasConversion(

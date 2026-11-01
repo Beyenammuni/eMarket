@@ -10,31 +10,49 @@ internal sealed class GetBusinessOrdersHandler
         Result<List<GetBusinessOrdersResponse>>>
 {
     private readonly IOrderRepository _orderRepository;
+    private readonly IUserRepository _userRepository;
 
     public GetBusinessOrdersHandler(
-        IOrderRepository orderRepository)
+        IOrderRepository orderRepository,
+        IUserRepository userRepository)
     {
         _orderRepository = orderRepository;
+        _userRepository = userRepository;
     }
 
     public async Task<Result<List<GetBusinessOrdersResponse>>> Handle(
         GetBusinessOrdersQuery request,
         CancellationToken cancellationToken)
     {
-        var orders =
-            await _orderRepository.GetByBusinessIdAsync(
-                request.BusinessId,
+        var orders = await _orderRepository.GetByBusinessIdAsync(
+            request.BusinessId,
+            cancellationToken);
+
+        var response = new List<GetBusinessOrdersResponse>();
+
+        foreach (var order in orders)
+        {
+            var user = await _userRepository.GetByIdAsync(
+                order.UserId,
                 cancellationToken);
 
-        var response = orders
-            .Select(order =>
-                new GetBusinessOrdersResponse(
-                    order.Id.Value,
-                    order.Status.ToString(),
-                    order.CreatedAt,
-                    order.TotalAmount,
-                    order.Items.Sum(x => x.Quantity)))
-            .ToList();
+            response.Add(new GetBusinessOrdersResponse(
+                order.Id.Value,
+                user?.FullName.ToString() ?? "Müşteri",
+                user?.Username ?? string.Empty,
+                order.Status.ToString(),
+                order.CreatedAt,
+                order.TotalAmount,
+                order.Items.Sum(x => x.Quantity),
+                order.Items
+                    .Select(x => new BusinessOrderItemResponse(
+                        x.ProductId.Value,
+                        x.ProductName,
+                        x.Quantity,
+                        x.UnitPrice.Amount,
+                        x.TotalPrice))
+                    .ToList()));
+        }
 
         return Result<List<GetBusinessOrdersResponse>>.Success(
             response);

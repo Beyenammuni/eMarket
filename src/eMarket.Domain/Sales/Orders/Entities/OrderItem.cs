@@ -10,16 +10,22 @@ public sealed class OrderItem
     }
 
     internal OrderItem(
-        ProductId productId,
-        string productName,
-        Money unitPrice,
-        int quantity)
+    ProductId productId,
+    string productName,
+    Money unitPrice,
+    int quantity,
+    Guid? variantId = null,
+    string? variantName = null)
     {
+        Id = Guid.NewGuid();
         ProductId = productId;
         ProductName = productName;
         UnitPrice = unitPrice;
         Quantity = quantity;
+        VariantId = variantId;
+        VariantName = variantName;
     }
+    public Guid Id { get; private set; }
 
     public ProductId ProductId { get; private set; } = default!;
 
@@ -28,6 +34,9 @@ public sealed class OrderItem
     public Money UnitPrice { get; private set; } = default!;
 
     public int Quantity { get; private set; }
+    public Guid? VariantId { get; private set; }
+
+    public string? VariantName { get; private set; }
 
     public decimal TotalPrice =>
         UnitPrice.Amount * Quantity;

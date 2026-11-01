@@ -16,6 +16,8 @@ public sealed record CreateBusinessCommand(
     string Address,
     string City,
     string Country,
-    string Iban)
+    string Iban,
+    string? RepresentativeFullName = null,
+string? RepresentativeIdentityNumber = null)
     : IRequest<Result<CreateBusinessResponse>>;
 
