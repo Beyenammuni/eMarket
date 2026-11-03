@@ -84,6 +84,9 @@ public sealed class OrderConfiguration
         builder.Property(x => x.ShippingFee)
     .HasPrecision(18, 2)
     .IsRequired();
+        builder.Property(x => x.StockReleased)
+    .IsRequired()
+    .HasDefaultValue(false);
 
         builder.Property(x => x.UpdatedAt);
 

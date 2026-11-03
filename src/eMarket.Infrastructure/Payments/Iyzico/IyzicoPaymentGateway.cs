@@ -1,25 +1,28 @@
-using System.Globalization;
 using eMarket.Application.Common.Interfaces.Payments;
 using Iyzipay;
 using Iyzipay.Model;
 using Iyzipay.Request;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System.Globalization;
 
 namespace eMarket.Infrastructure.Payments.Iyzico;
 
 internal sealed class IyzicoPaymentGateway : IPaymentGateway
 {
     private readonly IyzicoOptions _options;
-
+    private readonly ILogger<IyzicoPaymentGateway> _logger;
     public IyzicoPaymentGateway(
-        IOptions<IyzicoOptions> options)
+        IOptions<IyzicoOptions> options,
+        ILogger<IyzicoPaymentGateway> logger)
     {
         _options = options.Value;
+        _logger = logger;
     }
 
     public async Task<PaymentGatewayResult> CreatePaymentAsync(
-        PaymentGatewayRequest request,
-        CancellationToken cancellationToken = default)
+     PaymentGatewayRequest request,
+     CancellationToken cancellationToken = default)
     {
         var options = new Iyzipay.Options
         {
@@ -36,75 +39,95 @@ internal sealed class IyzicoPaymentGateway : IPaymentGateway
             GsmNumber = NormalizeTurkishPhone(request.Buyer.Phone),
             Email = request.Buyer.Email,
             IdentityNumber = request.Buyer.IdentityNumber,
-
             RegistrationAddress = request.DeliveryAddress.AddressLine,
             City = request.DeliveryAddress.City,
             Country = "Turkey",
-            ZipCode = request.DeliveryAddress.PostalCode,
+            ZipCode = request.DeliveryAddress.PostalCode
         };
 
-        var shippingAddress = CreateAddress(
-            request.DeliveryAddress);
-
-        var billingAddress = CreateAddress(
-            request.DeliveryAddress);
-
+        var shippingAddress = CreateAddress(request.DeliveryAddress);
+        var billingAddress = CreateAddress(request.DeliveryAddress);
         var basketItems = CreateBasketItems(request);
 
-        var checkoutRequest =
-            new CreateCheckoutFormInitializeRequest
-            {
-                Locale = Locale.TR.ToString(),
-                ConversationId = request.PaymentId.ToString(),
+        var checkoutRequest = new CreateCheckoutFormInitializeRequest
+        {
+            Locale = Locale.TR.ToString(),
+            ConversationId = request.PaymentId.ToString(),
 
-                Price = request.Amount.ToString(
-                    "0.00",
-                    CultureInfo.InvariantCulture),
+            Price = request.Amount.ToString(
+                "0.00",
+                CultureInfo.InvariantCulture),
 
-                PaidPrice = request.Amount.ToString(
-                    "0.00",
-                    CultureInfo.InvariantCulture),
+            PaidPrice = request.Amount.ToString(
+                "0.00",
+                CultureInfo.InvariantCulture),
 
-                Currency = request.Currency,
-                BasketId = (
-    request.OrderId ??
-    request.SubscriptionId ??
-    request.PaymentId
-).ToString(),
-                PaymentGroup = PaymentGroup.PRODUCT.ToString(),
-                CallbackUrl = request.ReturnUrl,
+            Currency = request.Currency,
 
-                Buyer = buyer,
-                ShippingAddress = shippingAddress,
-                BillingAddress = billingAddress,
-                BasketItems = basketItems
-            };
+            BasketId = (
+                request.OrderId ??
+                request.SubscriptionId ??
+                request.PaymentId
+            ).ToString(),
+
+            PaymentGroup = PaymentGroup.PRODUCT.ToString(),
+            CallbackUrl = request.ReturnUrl,
+            Buyer = buyer,
+            ShippingAddress = shippingAddress,
+            BillingAddress = billingAddress,
+            BasketItems = basketItems
+        };
 
         try
         {
-            var response =
-                await CheckoutFormInitialize.Create(
-                    checkoutRequest,
-                    options);
+            var response = await CheckoutFormInitialize.Create(
+                checkoutRequest,
+                options);
 
-            if (!string.Equals(
-                    response.Status,
-                    Status.SUCCESS.ToString(),
-                    StringComparison.OrdinalIgnoreCase))
+            var isProviderSuccess = string.Equals(
+                response.Status,
+                Status.SUCCESS.ToString(),
+                StringComparison.OrdinalIgnoreCase);
+
+            if (!isProviderSuccess)
             {
                 return new PaymentGatewayResult(
-                    false,
-                    null,
-                    response.Token,
-                    response.ErrorMessage ??
-                    "iyzico marketplace checkout initialization failed.");
+    false,
+    null,
+    null,
+    response.ErrorMessage ??
+    "iyzico checkout initialization failed.")
+                {
+                    CheckoutToken = response.Token,
+                    CreationStatus = string.IsNullOrWhiteSpace(response.Token)
+        ? PaymentCreationStatus.Failed
+        : PaymentCreationStatus.Unknown
+                };
+            }
+
+            if (string.IsNullOrWhiteSpace(response.Token) ||
+                string.IsNullOrWhiteSpace(response.PaymentPageUrl))
+            {
+                return new PaymentGatewayResult(
+    false,
+    response.PaymentPageUrl,
+    null,
+    "iyzico returned an incomplete checkout response.")
+                {
+                    CheckoutToken = response.Token,
+                    CreationStatus = PaymentCreationStatus.Unknown
+                };
             }
 
             return new PaymentGatewayResult(
-                true,
-                response.PaymentPageUrl,
-                response.Token,
-                null);
+    true,
+    response.PaymentPageUrl,
+    null,
+    null)
+            {
+                CheckoutToken = response.Token,
+                CreationStatus = PaymentCreationStatus.Succeeded
+            };
         }
         catch (Exception ex)
         {
@@ -112,19 +135,26 @@ internal sealed class IyzicoPaymentGateway : IPaymentGateway
                 false,
                 null,
                 null,
-                ex.Message);
+                ex.Message)
+            {
+                CreationStatus = PaymentCreationStatus.Unknown
+            };
         }
     }
 
+
     public async Task<PaymentCheckoutResult> GetCheckoutResultAsync(
-        string token,
-        CancellationToken cancellationToken = default)
+    string token,
+    CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(token))
         {
             return new PaymentCheckoutResult(
                 false, null, "iyzico token is required.",
-                null, null, null, null, null);
+                null, null, null, null, null)
+            {
+                VerificationStatus = PaymentVerificationStatus.Unknown
+            };
         }
 
         var options = new Iyzipay.Options
@@ -157,35 +187,68 @@ internal sealed class IyzicoPaymentGateway : IPaymentGateway
                     response.BasketId,
                     response.Price,
                     response.PaidPrice,
-                    response.Currency);
+                    response.Currency)
+                {
+                    VerificationStatus = PaymentVerificationStatus.Unknown,
+                    FraudStatus = response.FraudStatus
+                };
             }
 
-            if (!string.Equals(
-                    response.PaymentStatus,
-                    "SUCCESS",
-                    StringComparison.OrdinalIgnoreCase))
+            var paymentStatus = response.PaymentStatus?.Trim();
+            var fraudStatus = response.FraudStatus;
+
+            var verificationStatus = PaymentVerificationStatus.Unknown;
+            var error = response.ErrorMessage;
+
+            if (string.Equals(
+                    paymentStatus,
+                    "FAILURE",
+                    StringComparison.OrdinalIgnoreCase) ||
+                fraudStatus == -1)
             {
-                return new PaymentCheckoutResult(
-                    false,
-                    response.PaymentId,
-                    response.ErrorMessage ??
-                        "iyzico payment was not successful.",
-                    response.ConversationId,
-                    response.BasketId,
-                    response.Price,
-                    response.PaidPrice,
-                    response.Currency);
+                verificationStatus = PaymentVerificationStatus.Failed;
+                error ??= "iyzico payment was rejected.";
+            }
+            else if (string.Equals(
+                         paymentStatus,
+                         "SUCCESS",
+                         StringComparison.OrdinalIgnoreCase))
+            {
+                if (fraudStatus == 1)
+                {
+                    verificationStatus = PaymentVerificationStatus.Succeeded;
+                }
+                else if (fraudStatus == 0)
+                {
+                    verificationStatus = PaymentVerificationStatus.Pending;
+                    error ??= "Payment is under iyzico fraud review.";
+                }
+            }
+            else if (string.Equals(
+                         paymentStatus,
+                         "INIT_THREEDS",
+                         StringComparison.OrdinalIgnoreCase) ||
+                     string.Equals(
+                         paymentStatus,
+                         "CALLBACK_THREEDS",
+                         StringComparison.OrdinalIgnoreCase))
+            {
+                verificationStatus = PaymentVerificationStatus.Pending;
             }
 
             return new PaymentCheckoutResult(
-    true,
-    response.PaymentId,
-    null,
-    response.ConversationId,
-    response.BasketId,
-    response.Price,
-    response.PaidPrice,
-    response.Currency);
+                verificationStatus == PaymentVerificationStatus.Succeeded,
+                response.PaymentId,
+                error,
+                response.ConversationId,
+                response.BasketId,
+                response.Price,
+                response.PaidPrice,
+                response.Currency)
+            {
+                VerificationStatus = verificationStatus,
+                FraudStatus = fraudStatus
+            };
         }
         catch (Exception)
         {
@@ -193,7 +256,10 @@ internal sealed class IyzicoPaymentGateway : IPaymentGateway
                 false,
                 null,
                 "Unable to verify the iyzico checkout result.",
-                null, null, null, null, null);
+                null, null, null, null, null)
+            {
+                VerificationStatus = PaymentVerificationStatus.Unknown
+            };
         }
     }
 
@@ -313,4 +379,154 @@ internal sealed class IyzicoPaymentGateway : IPaymentGateway
 
         return $"+90{digits}";
     }
+
+    public async Task<PaymentCheckoutResult> GetPaymentResultAsync(
+        string providerPaymentId,
+        string paymentConversationId,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(providerPaymentId) ||
+            string.IsNullOrWhiteSpace(paymentConversationId))
+        {
+            return new PaymentCheckoutResult(
+                false, null, "Payment identifiers are required.",
+                null, null, null, null, null)
+            {
+                VerificationStatus = PaymentVerificationStatus.Unknown
+            };
+        }
+
+        var options = new Iyzipay.Options
+        {
+            ApiKey = _options.ApiKey,
+            SecretKey = _options.SecretKey,
+            BaseUrl = _options.BaseUrl
+        };
+
+        var request = new Iyzipay.Request.RetrievePaymentRequest
+        {
+            Locale = Iyzipay.Model.Locale.TR.ToString(),
+            ConversationId = paymentConversationId,
+            PaymentId = providerPaymentId,
+            PaymentConversationId = paymentConversationId
+        };
+
+        try
+        {
+            var response = await Iyzipay.Model.Payment.Retrieve(
+                request,
+                options);
+
+            if (!string.Equals(
+                    response.Status,
+                    Iyzipay.Model.Status.SUCCESS.ToString(),
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                return new PaymentCheckoutResult(
+                    false,
+                    response.PaymentId,
+                    response.ErrorMessage ??
+                        "iyzico payment could not be retrieved.",
+                    response.ConversationId,
+                    response.BasketId,
+                    response.Price,
+                    response.PaidPrice,
+                    response.Currency)
+                {
+                    VerificationStatus = PaymentVerificationStatus.Unknown,
+                    FraudStatus = response.FraudStatus
+                };
+            }
+
+            var isPaymentSuccessful = string.Equals(
+    response.PaymentStatus,
+    "SUCCESS",
+    StringComparison.OrdinalIgnoreCase);
+            if (!string.Equals(
+        response.PaymentId,
+        providerPaymentId,
+        StringComparison.Ordinal))
+            {
+                return new PaymentCheckoutResult(
+                    false,
+                    response.PaymentId,
+                    "Payment ID verification failed.",
+                    response.ConversationId,
+                    response.BasketId,
+                    response.Price,
+                    response.PaidPrice,
+                    response.Currency)
+                {
+                    VerificationStatus = PaymentVerificationStatus.Unknown,
+                    FraudStatus = response.FraudStatus
+                };
+            }
+            if (!string.Equals(
+        response.ConversationId,
+        paymentConversationId,
+        StringComparison.Ordinal))
+            {
+                _logger.LogWarning(
+                    "iyzico ConversationId mismatch. PaymentId: {PaymentId}",
+                    providerPaymentId);
+
+                return new PaymentCheckoutResult(
+                    false,
+                    response.PaymentId,
+                    "Payment conversation verification failed.",
+                    response.ConversationId,
+                    response.BasketId,
+                    response.Price,
+                    response.PaidPrice,
+                    response.Currency)
+                {
+                    VerificationStatus = PaymentVerificationStatus.Unknown,
+                    FraudStatus = response.FraudStatus
+                };
+            }
+            var verificationStatus = response.FraudStatus switch
+            {
+                1 when isPaymentSuccessful =>
+                    PaymentVerificationStatus.Succeeded,
+
+                -1 => PaymentVerificationStatus.Failed,
+
+                0 => PaymentVerificationStatus.Pending,
+
+                _ => PaymentVerificationStatus.Unknown
+            };
+
+            return new PaymentCheckoutResult(
+                verificationStatus == PaymentVerificationStatus.Succeeded,
+                response.PaymentId,
+                response.ErrorMessage,
+                response.ConversationId,
+                response.BasketId,
+                response.Price,
+                response.PaidPrice,
+                response.Currency)
+            {
+                VerificationStatus = verificationStatus,
+                FraudStatus = response.FraudStatus
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Failed to retrieve iyzico payment. PaymentId: {PaymentId}, ConversationId: {ConversationId}",
+                providerPaymentId,
+                paymentConversationId);
+
+            return new PaymentCheckoutResult(
+                false,
+                null,
+                "Unable to retrieve the iyzico payment.",
+                null, null, null, null, null)
+            {
+                VerificationStatus = PaymentVerificationStatus.Unknown
+            };
+        }
+    }
+
 }

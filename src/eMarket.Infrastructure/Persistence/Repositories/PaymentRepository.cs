@@ -53,5 +53,30 @@ public sealed class PaymentRepository
                 x => x.SubscriptionId == subscriptionId,
                 cancellationToken);
     }
+    public async Task<IReadOnlyList<Payment>> GetExpiredPendingAsync(
+    DateTime now,
+    int take,
+    CancellationToken cancellationToken = default)
+    {
+        if (take <= 0)
+            return Array.Empty<Payment>();
+        return await _context.Payments
+            .Where(x =>
+                x.Status == PaymentStatus.Pending &&
+                x.CheckoutToken != null &&
+                x.CheckoutExpiresAt != null &&
+                x.CheckoutExpiresAt <= now)
+            .OrderBy(x => x.CheckoutExpiresAt)
+            .Take(take)
+            .ToListAsync(cancellationToken);
+    }
+    public async Task<Payment?> GetByProviderPaymentIdAsync(
+    string providerPaymentId,
+    CancellationToken cancellationToken = default)
+{
+    return await _context.Payments.FirstOrDefaultAsync(
+        x => x.ProviderPaymentId == providerPaymentId,
+        cancellationToken);
+}
 }
 

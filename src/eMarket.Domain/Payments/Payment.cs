@@ -59,6 +59,9 @@ public sealed class Payment : AggregateRoot<PaymentId>
     public string? Provider { get; private set; }
 
     public string? ProviderPaymentId { get; private set; }
+    public string? CheckoutToken { get; private set; }
+
+    public DateTime? CheckoutExpiresAt { get; private set; }
 
     public DateTime CreatedAt { get; private set; }
 
@@ -193,6 +196,41 @@ public sealed class Payment : AggregateRoot<PaymentId>
                 Id,
                 OrderId,
                 SubscriptionId));
+
+        return Result.Success();
+    }
+    public Result SetCheckoutSession(
+    string token,
+    DateTime expiresAt)
+    {
+        if (string.IsNullOrWhiteSpace(token))
+            return Result.Failure(PaymentErrors.InvalidProviderResponse);
+
+        if (Status != PaymentStatus.Pending)
+            return Result.Failure(PaymentErrors.InvalidStatus);
+
+        CheckoutToken = token;
+        CheckoutExpiresAt = expiresAt;
+        UpdatedAt = DateTime.UtcNow;
+
+        return Result.Success();
+    }
+    public Result SetProviderPaymentId(string providerPaymentId)
+    {
+        if (string.IsNullOrWhiteSpace(providerPaymentId))
+            return Result.Failure(PaymentErrors.InvalidProviderResponse);
+
+        if (Status != PaymentStatus.Pending)
+            return Result.Failure(PaymentErrors.InvalidStatus);
+
+        if (!string.IsNullOrWhiteSpace(ProviderPaymentId) &&
+            ProviderPaymentId != providerPaymentId)
+        {
+            return Result.Failure(PaymentErrors.InvalidProviderResponse);
+        }
+
+        ProviderPaymentId = providerPaymentId;
+        UpdatedAt = DateTime.UtcNow;
 
         return Result.Success();
     }

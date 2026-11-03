@@ -138,6 +138,8 @@ internal sealed class CreatePaymentCommandHandler
             .First()
             .UnitPrice
             .Currency;
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
 
         var paymentResult = Payment.Create(
             order.Id.Value,
@@ -250,32 +252,79 @@ internal sealed class CreatePaymentCommandHandler
              item.Quantity))
      .ToList();
 
-        var gatewayResult =
-            await _paymentGateway.CreatePaymentAsync(
-new PaymentGatewayRequest(
-    payment.Id.Value,
-    order.Id.Value,
-    null,
-     PaymentGatewayPaymentType.Order,
-    payment.Amount.Amount,
-    payment.Amount.Currency.ToString(),
-    callbackUrl,
-    buyer,
-    merchant,
-    deliveryAddress,
-    items),
-                cancellationToken);
-        if (!gatewayResult.IsSuccess)
+        var gatewayResult = await _paymentGateway.CreatePaymentAsync(
+    new PaymentGatewayRequest(
+        payment.Id.Value,
+        order.Id.Value,
+        null,
+        PaymentGatewayPaymentType.Order,
+        payment.Amount.Amount,
+        payment.Amount.Currency.ToString(),
+        callbackUrl,
+        buyer,
+        merchant,
+        deliveryAddress,
+        items),
+    cancellationToken);
+
+        if (gatewayResult.CreationStatus == PaymentCreationStatus.Failed)
         {
+            var failedResult = payment.MarkAsFailed();
+
+            if (failedResult.IsFailure)
+                return Result<CreatePaymentResponse>.Failure(failedResult.Error);
+
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+
             return Result<CreatePaymentResponse>.Failure(
                 new Error(
                     "Payment.ProviderFailed",
-                    gatewayResult.Error ??
-                    "Payment provider failed."));
+                    "iyzico rejected the checkout initialization."));
         }
 
-        await _unitOfWork.SaveChangesAsync(
-            cancellationToken);
+        if (gatewayResult.CreationStatus == PaymentCreationStatus.Unknown)
+        {
+            if (!string.IsNullOrWhiteSpace(gatewayResult.CheckoutToken))
+            {
+                var unknownSessionResult = payment.SetCheckoutSession(
+    gatewayResult.CheckoutToken,
+    DateTime.UtcNow.AddMinutes(15));
+
+                if (unknownSessionResult.IsFailure)
+                {
+                    return Result<CreatePaymentResponse>.Failure(
+                        unknownSessionResult.Error);
+                }
+
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+            }
+
+            return Result<CreatePaymentResponse>.Failure(
+                new Error(
+                    "Payment.InitializationUnknown",
+                    "Payment initialization could not be confirmed. Please try again later."));
+        }
+
+        if (string.IsNullOrWhiteSpace(gatewayResult.CheckoutToken) ||
+            string.IsNullOrWhiteSpace(gatewayResult.PaymentUrl))
+        {
+            return Result<CreatePaymentResponse>.Failure(
+                new Error(
+                    "Payment.InvalidProviderResponse",
+                    "Payment provider returned an invalid checkout session."));
+        }
+
+        var sessionResult = payment.SetCheckoutSession(
+            gatewayResult.CheckoutToken,
+            DateTime.UtcNow.AddMinutes(15));
+
+        if (sessionResult.IsFailure)
+        {
+            return Result<CreatePaymentResponse>.Failure(
+                sessionResult.Error);
+        }
+
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result<CreatePaymentResponse>.Success(
             new CreatePaymentResponse(
@@ -283,7 +332,7 @@ new PaymentGatewayRequest(
                 order.Id.Value,
                 payment.Amount.Amount,
                 payment.Amount.Currency.ToString(),
-                gatewayResult.PaymentUrl!));
+                gatewayResult.PaymentUrl));
     }
 }
 

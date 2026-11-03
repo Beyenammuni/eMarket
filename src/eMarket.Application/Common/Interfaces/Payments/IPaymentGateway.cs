@@ -9,4 +9,8 @@ public interface IPaymentGateway
     Task<PaymentCheckoutResult> GetCheckoutResultAsync(
         string token,
         CancellationToken cancellationToken = default);
+    Task<PaymentCheckoutResult> GetPaymentResultAsync(
+    string providerPaymentId,
+    string paymentConversationId,
+    CancellationToken cancellationToken = default);
 }

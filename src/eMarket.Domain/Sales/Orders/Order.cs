@@ -44,6 +44,7 @@ private Order()
 
     public byte[] RowVersion { get; private set; } = [];
     public decimal ShippingFee { get; private set; }
+    public bool StockReleased { get; private set; }
     public DeliveryAddress DeliveryAddress { get; private set; } = default!;
 
     public IReadOnlyCollection<OrderItem> Items =>
@@ -193,6 +194,37 @@ private Order()
 
         AddDomainEvent(
             new OrderCancelledDomainEvent(Id));
+
+        return Result.Success();
+    }
+    public Result ReleaseStock()
+    {
+        if (StockReleased)
+            return Result.Success();
+
+        if (Status is OrderStatus.Paid
+            or OrderStatus.Processing
+            or OrderStatus.Shipped
+            or OrderStatus.Delivered)
+        {
+            return Result.Failure(OrderErrors.InvalidStatus);
+        }
+
+        StockReleased = true;
+        UpdatedAt = DateTime.UtcNow;
+
+        return Result.Success();
+    }
+    public Result MarkStockReleased()
+    {
+        if (StockReleased)
+            return Result.Success();
+
+        if (Status != OrderStatus.Cancelled)
+            return Result.Failure(OrderErrors.InvalidStatus);
+
+        StockReleased = true;
+        UpdatedAt = DateTime.UtcNow;
 
         return Result.Success();
     }

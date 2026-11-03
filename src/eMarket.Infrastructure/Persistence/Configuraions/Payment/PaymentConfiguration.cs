@@ -48,6 +48,10 @@ public sealed class PaymentConfiguration
 
         builder.Property(x => x.ProviderPaymentId)
             .HasMaxLength(200);
+        builder.Property(x => x.CheckoutToken)
+    .HasMaxLength(200);
+
+        builder.Property(x => x.CheckoutExpiresAt);
 
         builder.OwnsOne(
             x => x.Amount,

@@ -18,4 +18,12 @@ public interface IPaymentRepository
     Task<Payment?> GetBySubscriptionIdAsync(
     Guid subscriptionId,
     CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<Payment>> GetExpiredPendingAsync(
+    DateTime now,
+    int take,
+    CancellationToken cancellationToken = default);
+
+    Task<Payment?> GetByProviderPaymentIdAsync(
+    string providerPaymentId,
+    CancellationToken cancellationToken = default);
 }

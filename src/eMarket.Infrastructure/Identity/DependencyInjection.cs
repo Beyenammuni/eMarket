@@ -3,7 +3,10 @@ using eMarket.Application.Behaviors;
 using eMarket.Application.Common.Interfaces;
 using eMarket.Application.Common.Interfaces.Payments;
 using eMarket.Application.Common.IRepositories;
+using eMarket.Application.Sales.Orders.Services;
+using eMarket.Application.Sales.Payments.Services;
 using eMarket.Infrastructure.Admin;
+using eMarket.Infrastructure.BackgroundJobs;
 using eMarket.Infrastructure.Identity.Jwt;
 using eMarket.Infrastructure.Messaging;
 using eMarket.Infrastructure.Payments.Iyzico;
@@ -58,7 +61,9 @@ public static class DependencyInjection
                 configuration.GetConnectionString(
                     "DefaultConnection"));
         });
-
+        services.AddScoped<OrderPaymentConfirmationService>();
+        services.AddScoped<OrderStockReleaseService>();
+        services.AddHostedService<ExpiredOrderPaymentWorker>();
         services.AddScoped<IPasswordHasher, PasswordHasher>();
         services.AddScoped<ICartRepository, CartRepository>();
         services.AddScoped<IUserRepository,UserRepository>();

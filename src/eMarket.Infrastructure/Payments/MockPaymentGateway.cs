@@ -36,4 +36,23 @@ public sealed class MockPaymentGateway : IPaymentGateway
                 null,
                 null));
     }
+    public Task<PaymentCheckoutResult> GetPaymentResultAsync(
+    string providerPaymentId,
+    string paymentConversationId,
+    CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult(
+            new PaymentCheckoutResult(
+                false,
+                providerPaymentId,
+                "Mock payment verification is not implemented.",
+                paymentConversationId,
+                null,
+                null,
+                null,
+                null)
+            {
+                VerificationStatus = PaymentVerificationStatus.Unknown
+            });
+    }
 }
