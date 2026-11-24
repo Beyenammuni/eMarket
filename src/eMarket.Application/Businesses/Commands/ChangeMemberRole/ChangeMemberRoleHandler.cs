@@ -2,6 +2,7 @@ using eMarket.Application.Common.Authorization;
 using eMarket.Application.Common.Interfaces;
 using eMarket.Application.Common.IRepositories;
 using eMarket.Domain.Businesses;
+using eMarket.Domain.Businesses.Entities;
 using eMarket.Domain.Businesses.ValueObjects;
 using eMarket.Domain.Identity;
 using eMarket.SharedKernel.Results;
@@ -18,15 +19,21 @@ internal sealed class ChangeMemberRoleCommandHandler
     private readonly IBusinessRepository _businessRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IBusinessAuthorization _authorization;
+    private readonly IBusinessDbContext _businessDbContext;
+    private readonly ICurrentUser _currentUser;
 
     public ChangeMemberRoleCommandHandler(
         IBusinessRepository businessRepository,
         IUnitOfWork unitOfWork,
-        IBusinessAuthorization authorization)
+        IBusinessAuthorization authorization,
+        IBusinessDbContext businessDbContext,
+        ICurrentUser currentUser)
     {
         _businessRepository = businessRepository;
         _unitOfWork = unitOfWork;
         _authorization = authorization;
+        _businessDbContext = businessDbContext;
+        _currentUser = currentUser;
     }
 
     public async Task<Result<ChangeMemberRoleResponse>> Handle(
@@ -77,11 +84,33 @@ internal sealed class ChangeMemberRoleCommandHandler
             return Result<ChangeMemberRoleResponse>.Failure(
                 BusinessErrors.TransferToSameOwner);
         }
+        var actorUserId = _currentUser.UserId;
+
+        if (actorUserId is null)
+        {
+            return Result<ChangeMemberRoleResponse>.Failure(
+                BusinessErrors.UserNotAuthenticated);
+        }
+
+        var targetUserId = UserId.Create(request.UserId);
+
+        var targetMember = await _businessRepository.GetMemberAsync(
+            businessId,
+            targetUserId,
+            cancellationToken);
+
+        if (targetMember is null)
+        {
+            return Result<ChangeMemberRoleResponse>.Failure(
+                BusinessErrors.UserNotMember);
+        }
+
+        var oldRole = targetMember.Role.Name;
 
         var result =
-            business.ChangeMemberRole(
-                UserId.Create(request.UserId),
-                role);
+    business.ChangeMemberRole(
+        targetUserId,
+        role);
 
         if (result.IsFailure)
         {
@@ -89,8 +118,16 @@ internal sealed class ChangeMemberRoleCommandHandler
                 result.Error);
         }
 
-        await _unitOfWork.SaveChangesAsync(
-            cancellationToken);
+        _businessDbContext.BusinessActivityLogs.Add(
+    BusinessActivityLog.Create(
+        businessId,
+        actorUserId,
+        targetUserId,
+        "MemberRoleChanged",
+        $"Employee role changed from {oldRole} to {role.Name}"
+    ));
+
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result<ChangeMemberRoleResponse>.Success(
             new ChangeMemberRoleResponse(

@@ -1,13 +1,16 @@
 using eMarket.Application.Common.Interfaces;
 using eMarket.Application.Common.IRepositories;
+using eMarket.Domain.Businesses;
+using eMarket.Domain.Businesses.Entities;
 using eMarket.Domain.Catalog.Products;
+using eMarket.Domain.Catalog.Products.ValueObjects;
+using eMarket.Domain.Inventory.Entities;
 using eMarket.Domain.Sales.Orders;
 using eMarket.Domain.Sales.Orders.ValueObjects;
 using eMarket.Domain.Subscriptions;
 using eMarket.SharedKernel.Results;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-
 namespace eMarket.Application.Subscriptions.Commands.GenerateSubscriptionOrder;
 
 internal sealed class GenerateSubscriptionOrderCommandHandler
@@ -20,18 +23,21 @@ internal sealed class GenerateSubscriptionOrderCommandHandler
     private readonly IOrderRepository _orders;
     private readonly IUnitOfWork _uow;
     private readonly IBusinessRepository _businessRepository;
+    private readonly IBusinessDbContext _businessDbContext;
     public GenerateSubscriptionOrderCommandHandler(
         ISubscriptionDbContext context,
         ICatalogDbContext catalog,
         IOrderRepository orders,
         IUnitOfWork uow,
-        IBusinessRepository businessRepository)
+        IBusinessRepository businessRepository,
+        IBusinessDbContext businessDbContext)
     {
         _context = context;
         _catalog = catalog;
         _orders = orders;
         _uow = uow;
         _businessRepository = businessRepository;
+        _businessDbContext = businessDbContext;
     }
 
     public async Task<Result<GenerateSubscriptionOrderResponse>> Handle(
@@ -137,83 +143,199 @@ internal sealed class GenerateSubscriptionOrderCommandHandler
                 ? 0m
                 : business.ShippingFee;
 
-        // 7. Create Order
-        var orderResult = Order.Create(
-     subscription.UserId,
-     subscription.BusinessId,
-     deliveryAddress,
-     shippingFee);
 
-        if (orderResult.IsFailure)
-        {
-            return Result<GenerateSubscriptionOrderResponse>.Failure(
-                orderResult.Error);
-        }
-
-        var order = orderResult.Value!;
-
-        // 8. Add subscription items to Order
-        foreach (var subscriptionItem in subscription.Items)
-        {
-            var product = products.First(
-                x => x.Id == subscriptionItem.ProductId);
-
-            // Check stock
-            if (product.StockQuantity < subscriptionItem.Quantity)
+        var requiredItems = subscription.Items
+            .GroupBy(x => x.ProductId)
+            .Select(g => new
             {
-                return Result<GenerateSubscriptionOrderResponse>.Failure(
-                    new Error(
-                        "Subscription.InsufficientStock",
-                        $"Insufficient stock for product {product.Id.Value}."));
-            }
+                ProductId = g.Key,
+                Quantity = g.Sum(x => x.Quantity)
+            })
+            .ToList();
 
-            // Add product snapshot to Order
-            var addItemResult = order.AddItem(
-                product.Id,
-                product.Name.Value,
-                product.Price,
-                subscriptionItem.Quantity);
+        var transactionResult =
+            Result<GenerateSubscriptionOrderResponse>.Failure(
+                new Error("Subscription.InsufficientStock", "Insufficient stock."));
 
-            if (addItemResult.IsFailure)
+        await _businessDbContext.ExecuteInSerializableTransactionAsync(
+            async ct =>
             {
-                return Result<GenerateSubscriptionOrderResponse>.Failure(
-                    addItemResult.Error);
-            }
+                var branches = await _businessDbContext.Branches
+                    .Where(x =>
+                        x.BusinessId == subscription.BusinessId &&
+                        x.IsActive)
+                    .ToListAsync(ct);
 
-            // Decrease stock
-            var decreaseStockResult = product.DecreaseStock(
-                subscriptionItem.Quantity);
+                if (branches.Count == 0)
+                {
+                    transactionResult =
+                        Result<GenerateSubscriptionOrderResponse>.Failure(
+                            new Error(
+                                "Order.NoAvailableBranch",
+                                "No active branch is available."));
+                    return;
+                }
 
-            if (decreaseStockResult.IsFailure)
-            {
-                return Result<GenerateSubscriptionOrderResponse>.Failure(
-                    decreaseStockResult.Error);
-            }
-        }
+                var branchIds = branches.Select(x => x.Id).ToList();
 
-        // 9. Record generated Order on Subscription
-        var recordResult = subscription.RecordOrderGenerated(
-            order.Id.Value);
+                var inventories = await _businessDbContext.BranchInventories
+                    .Where(x =>
+                        branchIds.Contains(x.BranchId) &&
+                        requiredItems.Select(i => i.ProductId).Contains(x.ProductId) &&
+                        x.VariantId == null)
+                    .ToListAsync(ct);
 
-        if (recordResult.IsFailure)
-        {
-            return Result<GenerateSubscriptionOrderResponse>.Failure(
-                recordResult.Error);
-        }
+                bool HasRequiredStock(Branch branch)
+                {
+                    return requiredItems.All(item =>
+                        inventories.Any(inventory =>
+                            inventory.BranchId == branch.Id &&
+                            inventory.ProductId == item.ProductId &&
+                            inventory.VariantId == null &&
+                            inventory.AvailableQuantity >= item.Quantity));
+                }
 
-        // 10. Persist everything
-        await _orders.AddAsync(
-            order,
+                var eligibleBranches = branches
+                    .Where(HasRequiredStock)
+                    .ToList();
+
+                Branch? selectedBranch = null;
+
+                if (deliveryAddress.Latitude.HasValue &&
+                    deliveryAddress.Longitude.HasValue)
+                {
+                    var branchesWithCoordinates = eligibleBranches
+                        .Where(x => x.Latitude.HasValue && x.Longitude.HasValue)
+                        .ToList();
+
+                    if (branchesWithCoordinates.Count > 0)
+                    {
+                        selectedBranch = branchesWithCoordinates
+                            .OrderBy(x => GetDistanceInKm(
+                                (double)deliveryAddress.Latitude.Value,
+                                (double)deliveryAddress.Longitude.Value,
+                                (double)x.Latitude!.Value,
+                                (double)x.Longitude!.Value))
+                            .First();
+                    }
+                }
+
+                selectedBranch ??= eligibleBranches
+                    .FirstOrDefault(x => x.IsMain);
+
+                if (selectedBranch is null)
+                {
+                    transactionResult =
+                        Result<GenerateSubscriptionOrderResponse>.Failure(
+                            new Error(
+                                "Subscription.InsufficientStock",
+                                "No branch has all required items in stock."));
+                    return;
+                }
+
+                var orderResult = Order.Create(
+                    subscription.UserId,
+                    subscription.BusinessId,
+                    selectedBranch.Id,
+                    deliveryAddress,
+                    shippingFee);
+
+                if (orderResult.IsFailure)
+                {
+                    transactionResult =
+                        Result<GenerateSubscriptionOrderResponse>.Failure(
+                            orderResult.Error);
+                    return;
+                }
+
+                var order = orderResult.Value!;
+
+                // Add all order item snapshots first.
+                foreach (var subscriptionItem in subscription.Items)
+                {
+                    var product = products.First(
+                        x => x.Id == subscriptionItem.ProductId);
+
+                    var originalUnitPrice = product.Price;
+
+                    var discountAmount =
+                        Money.Create(0, originalUnitPrice.Currency);
+
+                    var addItemResult = order.AddItem(
+                        product.Id,
+                        product.Name.Value,
+                        originalUnitPrice,
+                        discountAmount,
+                        originalUnitPrice,
+                        subscriptionItem.Quantity);
+
+                    if (addItemResult.IsFailure)
+                    {
+                        transactionResult =
+                            Result<GenerateSubscriptionOrderResponse>.Failure(
+                                addItemResult.Error);
+                        return;
+                    }
+                }
+
+                var recordResult = subscription.RecordOrderGenerated(
+                    order.Id.Value);
+
+                if (recordResult.IsFailure)
+                {
+                    transactionResult =
+                        Result<GenerateSubscriptionOrderResponse>.Failure(
+                            recordResult.Error);
+                    return;
+                }
+
+                // Deduct stock from the selected branch.
+                foreach (var requirement in requiredItems)
+                {
+                    var inventory = inventories.First(
+                        x => x.BranchId == selectedBranch.Id &&
+                             x.ProductId == requirement.ProductId &&
+                             x.VariantId == null);
+
+                    inventory.DecreaseStock(requirement.Quantity);
+                }
+
+                await _orders.AddAsync(order, ct);
+                await _uow.SaveChangesAsync(ct);
+
+                transactionResult =
+                    Result<GenerateSubscriptionOrderResponse>.Success(
+                        new GenerateSubscriptionOrderResponse(
+                            subscription.Id.Value,
+                            order.Id.Value,
+                            subscription.NextDeliveryDate));
+            },
             cancellationToken);
 
-        await _uow.SaveChangesAsync(
-            cancellationToken);
+        return transactionResult;
+    }
+    private static double GetDistanceInKm(
+    double latitude1,
+    double longitude1,
+    double latitude2,
+    double longitude2)
+    {
+        const double earthRadiusKm = 6371;
 
-        // 11. Response
-        return Result<GenerateSubscriptionOrderResponse>.Success(
-            new GenerateSubscriptionOrderResponse(
-                subscription.Id.Value,
-                order.Id.Value,
-                subscription.NextDeliveryDate));
+        var lat1 = latitude1 * Math.PI / 180;
+        var lat2 = latitude2 * Math.PI / 180;
+
+        var deltaLat = (latitude2 - latitude1) * Math.PI / 180;
+        var deltaLon = (longitude2 - longitude1) * Math.PI / 180;
+
+        var a =
+            Math.Pow(Math.Sin(deltaLat / 2), 2) +
+            Math.Cos(lat1) *
+            Math.Cos(lat2) *
+            Math.Pow(Math.Sin(deltaLon / 2), 2);
+
+        var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+
+        return earthRadiusKm * c;
     }
 }

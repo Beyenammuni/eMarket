@@ -23,13 +23,15 @@ private Order()
     private Order(
         OrderId id,
         UserId userId,
-        BusinessId businessId)
+        BusinessId businessId,
+        BranchId branchId)
     {
         Id = id;
         UserId = userId;
         BusinessId = businessId;
         Status = OrderStatus.PendingPayment;
         CreatedAt = DateTime.UtcNow;
+        BranchId = branchId;
     }
 
     public UserId UserId { get; private set; } = default!;
@@ -46,7 +48,7 @@ private Order()
     public decimal ShippingFee { get; private set; }
     public bool StockReleased { get; private set; }
     public DeliveryAddress DeliveryAddress { get; private set; } = default!;
-
+    public BranchId? BranchId { get; private set; }
     public IReadOnlyCollection<OrderItem> Items =>
         _items.AsReadOnly();
 
@@ -56,16 +58,19 @@ private Order()
     public static Result<Order> Create(
      UserId userId,
      BusinessId businessId,
+     BranchId branchId,
      DeliveryAddress deliveryAddress,
      decimal shippingFee)
     {
         var order = new Order(
             OrderId.New(),
             userId,
-            businessId);
+            businessId,
+            branchId);
 
         order.DeliveryAddress = deliveryAddress;
         order.ShippingFee = shippingFee;
+
         order.AddDomainEvent(
             new OrderCreatedDomainEvent(order.Id));
 
@@ -73,13 +78,18 @@ private Order()
     }
 
 
+
     public Result AddItem(
         ProductId productId,
         string productName,
+        Money originalUnitPrice,
+        Money discountAmount,
         Money unitPrice,
         int quantity,
         Guid? variantId = null,
-        string? variantName = null)
+        string? variantName = null,
+        Guid? promotionId = null,
+        string? promotionName = null)
     {
         if (quantity <= 0)
         {
@@ -90,15 +100,20 @@ private Order()
         var item = new OrderItem(
             productId,
             productName,
+            originalUnitPrice,
+            discountAmount,
             unitPrice,
             quantity,
             variantId,
-            variantName);
+            variantName,
+            promotionId,
+            promotionName);
 
         _items.Add(item);
 
         return Result.Success();
     }
+
 
 
     public Result MarkAsPaid()
@@ -120,7 +135,7 @@ private Order()
 
         Status = OrderStatus.Paid;
         UpdatedAt = DateTime.UtcNow;
-
+        AddDomainEvent(new OrderStatusChangedDomainEvent(Id, UserId, Status));
         AddDomainEvent(new OrderPaidDomainEvent(Id));
 
         return Result.Success();
@@ -174,7 +189,7 @@ private Order()
 
         Status = OrderStatus.Delivered;
         UpdatedAt = DateTime.UtcNow;
-
+        AddDomainEvent(new OrderStatusChangedDomainEvent(Id, UserId, Status));
         return Result.Success();
     }
 
@@ -191,9 +206,7 @@ private Order()
 
         Status = OrderStatus.Cancelled;
         UpdatedAt = DateTime.UtcNow;
-
-        AddDomainEvent(
-            new OrderCancelledDomainEvent(Id));
+        AddDomainEvent(new OrderCancelledDomainEvent(Id));
 
         return Result.Success();
     }

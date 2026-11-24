@@ -1,4 +1,5 @@
 using eMarket.Application.Common.IRepositories;
+using eMarket.Domain.Businesses;
 using eMarket.Domain.Identity;
 using eMarket.Domain.Sales.Orders;
 using Microsoft.EntityFrameworkCore;
@@ -65,5 +66,18 @@ public sealed class OrderRepository : IOrderRepository
             .Where(x => x.BusinessId == businessId)
             .OrderByDescending(x => x.CreatedAt)
             .ToListAsync(cancellationToken);
+    }
+    public async Task<bool> HasActiveOrdersAsync(
+    Guid branchId,
+    CancellationToken cancellationToken = default)
+    {
+        var id = BranchId.Create(branchId);
+
+        return await _context.Orders.AnyAsync(
+            x => x.BranchId == id &&
+                 (x.Status == OrderStatus.PendingPayment ||
+                  x.Status == OrderStatus.Paid ||
+                  x.Status == OrderStatus.Processing),
+            cancellationToken);
     }
 }

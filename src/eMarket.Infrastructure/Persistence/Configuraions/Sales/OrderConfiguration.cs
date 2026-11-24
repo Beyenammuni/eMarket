@@ -65,6 +65,23 @@ public sealed class OrderConfiguration
             .OnDelete(DeleteBehavior.Restrict);
 
         // -------------------------
+        // Branch
+        // -------------------------
+
+        builder.Property(x => x.BranchId)
+            .HasConversion(
+                id => id!.Value,
+                value => BranchId.Create(value))
+            .IsRequired(false);
+
+        builder.HasIndex(x => x.BranchId);
+
+        builder.HasOne<Branch>()
+            .WithMany()
+            .HasForeignKey(x => x.BranchId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // -------------------------
         // Status
         // -------------------------
 
@@ -117,6 +134,13 @@ public sealed class OrderConfiguration
                 item.Property(x => x.VariantName)
                     .HasMaxLength(100);
 
+                item.Property(x => x.PromotionId)
+    .IsRequired(false);
+
+                item.Property(x => x.PromotionName)
+                    .HasMaxLength(150)
+                    .IsRequired(false);
+
                 item.Property(x => x.ProductId)
                     .HasConversion(
                         id => id.Value,
@@ -127,6 +151,40 @@ public sealed class OrderConfiguration
                     .HasMaxLength(200)
                     .IsRequired();
 
+
+                // Original Unit Price
+                item.OwnsOne(
+                    x => x.OriginalUnitPrice,
+                    money =>
+                    {
+                        money.Property(x => x.Amount)
+                            .HasColumnName("OriginalUnitPrice")
+                            .HasPrecision(18, 2)
+                            .IsRequired();
+
+                        money.Property(x => x.Currency)
+                            .HasColumnName("OriginalCurrency")
+                            .HasConversion<int>()
+                            .IsRequired();
+                    });
+
+                // Discount Amount
+                item.OwnsOne(
+                    x => x.DiscountAmount,
+                    money =>
+                    {
+                        money.Property(x => x.Amount)
+                            .HasColumnName("DiscountAmount")
+                            .HasPrecision(18, 2)
+                            .IsRequired();
+
+                        money.Property(x => x.Currency)
+                            .HasColumnName("DiscountCurrency")
+                            .HasConversion<int>()
+                            .IsRequired();
+                    });
+
+                // Final Unit Price
                 item.OwnsOne(
                     x => x.UnitPrice,
                     money =>
@@ -141,6 +199,7 @@ public sealed class OrderConfiguration
                             .HasConversion<int>()
                             .IsRequired();
                     });
+
 
                 item.Property(x => x.Quantity)
                     .IsRequired();

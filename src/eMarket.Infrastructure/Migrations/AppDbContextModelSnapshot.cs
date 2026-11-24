@@ -22,6 +22,68 @@ namespace eMarket.Infrastructure.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("eMarket.Domain.Businesses.Entities.Branch", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Address")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid>("BusinessId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("City")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("District")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsMain")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal?>("Latitude")
+                        .HasPrecision(10, 7)
+                        .HasColumnType("decimal(10,7)");
+
+                    b.Property<decimal?>("Longitude")
+                        .HasPrecision(10, 7)
+                        .HasColumnType("decimal(10,7)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("PhoneNumber")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BusinessId")
+                        .IsUnique()
+                        .HasFilter("[IsMain] = 1");
+
+                    b.ToTable("Branches", (string)null);
+                });
+
             modelBuilder.Entity("eMarket.Domain.Businesses.Entities.Business", b =>
                 {
                     b.Property<Guid>("Id")
@@ -71,6 +133,43 @@ namespace eMarket.Infrastructure.Migrations
                     b.ToTable("Businesses", (string)null);
                 });
 
+            modelBuilder.Entity("eMarket.Domain.Businesses.Entities.BusinessActivityLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<Guid>("ActorUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("BusinessId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<Guid?>("TargetUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TargetUserId");
+
+                    b.HasIndex("BusinessId", "CreatedAt");
+
+                    b.ToTable("BusinessActivityLogs", (string)null);
+                });
+
             modelBuilder.Entity("eMarket.Domain.Businesses.Entities.BusinessMember", b =>
                 {
                     b.Property<Guid>("Id")
@@ -101,6 +200,25 @@ namespace eMarket.Infrastructure.Migrations
                     b.HasIndex("BusinessId", "Role", "IsActive");
 
                     b.ToTable("BusinessMembers", (string)null);
+                });
+
+            modelBuilder.Entity("eMarket.Domain.Businesses.Entities.BusinessMemberPermission", b =>
+                {
+                    b.Property<Guid>("BusinessMemberId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Permission")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<bool>("IsGranted")
+                        .HasColumnType("bit");
+
+                    b.HasKey("BusinessMemberId", "Permission");
+
+                    b.HasIndex("BusinessMemberId");
+
+                    b.ToTable("BusinessMemberPermissions", (string)null);
                 });
 
             modelBuilder.Entity("eMarket.Domain.Businesses.Entities.SellerPlan", b =>
@@ -143,6 +261,20 @@ namespace eMarket.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("SellerPlans", (string)null);
+                });
+
+            modelBuilder.Entity("eMarket.Domain.Businesses.Entities.SellerPlanFeature", b =>
+                {
+                    b.Property<Guid>("SellerPlanId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Code")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("SellerPlanId", "Code");
+
+                    b.ToTable("SellerPlanFeatures", (string)null);
                 });
 
             modelBuilder.Entity("eMarket.Domain.Businesses.Entities.SellerPlanPayment", b =>
@@ -463,8 +595,6 @@ namespace eMarket.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ProductId");
-
                     b.HasIndex("Sku")
                         .IsUnique()
                         .HasFilter("[Sku] IS NOT NULL");
@@ -695,6 +825,98 @@ namespace eMarket.Infrastructure.Migrations
                     b.ToTable("Users", (string)null);
                 });
 
+            modelBuilder.Entity("eMarket.Domain.Inventory.Entities.BranchInventory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Quantity")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
+                    b.Property<int>("ReservedQuantity")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("VariantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductId");
+
+                    b.HasIndex("VariantId");
+
+                    b.HasIndex("BranchId", "ProductId")
+                        .IsUnique()
+                        .HasFilter("[VariantId] IS NULL");
+
+                    b.HasIndex("BranchId", "VariantId")
+                        .IsUnique()
+                        .HasFilter("[VariantId] IS NOT NULL");
+
+                    b.HasIndex("ProductId", "VariantId");
+
+                    b.ToTable("BranchInventories", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_BranchInventories_Quantity", "[Quantity] >= 0");
+
+                            t.HasCheckConstraint("CK_BranchInventories_ReservedQuantity", "[ReservedQuantity] >= 0 AND [ReservedQuantity] <= [Quantity]");
+                        });
+                });
+
+            modelBuilder.Entity("eMarket.Domain.Notifications.Entities.Notification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime?>("ReadAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("TargetUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "IsRead", "CreatedAt");
+
+                    b.ToTable("Notifications", (string)null);
+                });
+
             modelBuilder.Entity("eMarket.Domain.Payments.Payment", b =>
                 {
                     b.Property<Guid>("Id")
@@ -746,6 +968,84 @@ namespace eMarket.Infrastructure.Migrations
                     b.HasIndex("SubscriptionId");
 
                     b.ToTable("Payments", (string)null);
+                });
+
+            modelBuilder.Entity("eMarket.Domain.Promotions.Entities.Promotion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("BusinessId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime>("EndsAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<DateTime>("StartsAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BusinessId");
+
+                    b.HasIndex("Status", "StartsAtUtc", "EndsAtUtc");
+
+                    b.ToTable("Promotions", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Promotions_DateRange", "[EndsAtUtc] > [StartsAtUtc]");
+                        });
+                });
+
+            modelBuilder.Entity("eMarket.Domain.Promotions.Entities.PromotionItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("DiscountType")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("DiscountValue")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("PromotionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductId");
+
+                    b.HasIndex("PromotionId", "ProductId")
+                        .IsUnique();
+
+                    b.ToTable("PromotionItems", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_PromotionItems_DiscountValue", "[DiscountValue] > 0 AND ([DiscountType] <> 1 OR [DiscountValue] < 100)");
+                        });
                 });
 
             modelBuilder.Entity("eMarket.Domain.Sales.Carts.Cart", b =>
@@ -805,6 +1105,9 @@ namespace eMarket.Infrastructure.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid?>("BranchId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<Guid>("BusinessId")
                         .HasColumnType("uniqueidentifier");
 
@@ -836,6 +1139,8 @@ namespace eMarket.Infrastructure.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("BranchId");
 
                     b.HasIndex("BusinessId");
 
@@ -945,6 +1250,15 @@ namespace eMarket.Infrastructure.Migrations
                     b.HasIndex("UserId", "Status");
 
                     b.ToTable("Subscriptions", (string)null);
+                });
+
+            modelBuilder.Entity("eMarket.Domain.Businesses.Entities.Branch", b =>
+                {
+                    b.HasOne("eMarket.Domain.Businesses.Entities.Business", null)
+                        .WithMany("Branches")
+                        .HasForeignKey("BusinessId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("eMarket.Domain.Businesses.Entities.Business", b =>
@@ -1064,6 +1378,24 @@ namespace eMarket.Infrastructure.Migrations
                     b.HasOne("eMarket.Domain.Businesses.Entities.Business", null)
                         .WithMany("Members")
                         .HasForeignKey("BusinessId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("eMarket.Domain.Businesses.Entities.BusinessMemberPermission", b =>
+                {
+                    b.HasOne("eMarket.Domain.Businesses.Entities.BusinessMember", null)
+                        .WithMany()
+                        .HasForeignKey("BusinessMemberId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("eMarket.Domain.Businesses.Entities.SellerPlanFeature", b =>
+                {
+                    b.HasOne("eMarket.Domain.Businesses.Entities.SellerPlan", null)
+                        .WithMany()
+                        .HasForeignKey("SellerPlanId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
@@ -1301,6 +1633,36 @@ namespace eMarket.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("eMarket.Domain.Inventory.Entities.BranchInventory", b =>
+                {
+                    b.HasOne("eMarket.Domain.Businesses.Entities.Branch", null)
+                        .WithMany()
+                        .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("eMarket.Domain.Catalog.Products.Product", null)
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("eMarket.Domain.Catalog.Products.Variants.ProductVariant", null)
+                        .WithMany()
+                        .HasForeignKey("ProductId", "VariantId")
+                        .HasPrincipalKey("ProductId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("eMarket.Domain.Notifications.Entities.Notification", b =>
+                {
+                    b.HasOne("eMarket.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("eMarket.Domain.Payments.Payment", b =>
                 {
                     b.OwnsOne("eMarket.Domain.Catalog.Products.ValueObjects.Money", "Amount", b1 =>
@@ -1379,6 +1741,30 @@ namespace eMarket.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("eMarket.Domain.Promotions.Entities.Promotion", b =>
+                {
+                    b.HasOne("eMarket.Domain.Businesses.Entities.Business", null)
+                        .WithMany()
+                        .HasForeignKey("BusinessId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("eMarket.Domain.Promotions.Entities.PromotionItem", b =>
+                {
+                    b.HasOne("eMarket.Domain.Catalog.Products.Product", null)
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("eMarket.Domain.Promotions.Entities.Promotion", null)
+                        .WithMany("Items")
+                        .HasForeignKey("PromotionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("eMarket.Domain.Sales.Carts.Entities.CartItem", b =>
                 {
                     b.HasOne("eMarket.Domain.Sales.Carts.Cart", null)
@@ -1415,6 +1801,11 @@ namespace eMarket.Infrastructure.Migrations
 
             modelBuilder.Entity("eMarket.Domain.Sales.Orders.Order", b =>
                 {
+                    b.HasOne("eMarket.Domain.Businesses.Entities.Branch", null)
+                        .WithMany()
+                        .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("eMarket.Domain.Businesses.Entities.Business", null)
                         .WithMany()
                         .HasForeignKey("BusinessId")
@@ -1443,6 +1834,13 @@ namespace eMarket.Infrastructure.Migrations
                                 .HasMaxLength(200)
                                 .HasColumnType("nvarchar(200)");
 
+                            b1.Property<Guid?>("PromotionId")
+                                .HasColumnType("uniqueidentifier");
+
+                            b1.Property<string>("PromotionName")
+                                .HasMaxLength(150)
+                                .HasColumnType("nvarchar(150)");
+
                             b1.Property<int>("Quantity")
                                 .HasColumnType("int");
 
@@ -1459,6 +1857,56 @@ namespace eMarket.Infrastructure.Migrations
 
                             b1.WithOwner()
                                 .HasForeignKey("OrderId");
+
+                            b1.OwnsOne("eMarket.Domain.Catalog.Products.ValueObjects.Money", "DiscountAmount", b2 =>
+                                {
+                                    b2.Property<Guid>("OrderItemOrderId")
+                                        .HasColumnType("uniqueidentifier");
+
+                                    b2.Property<Guid>("OrderItemId")
+                                        .HasColumnType("uniqueidentifier");
+
+                                    b2.Property<decimal>("Amount")
+                                        .HasPrecision(18, 2)
+                                        .HasColumnType("decimal(18,2)")
+                                        .HasColumnName("DiscountAmount");
+
+                                    b2.Property<int>("Currency")
+                                        .HasColumnType("int")
+                                        .HasColumnName("DiscountCurrency");
+
+                                    b2.HasKey("OrderItemOrderId", "OrderItemId");
+
+                                    b2.ToTable("OrderItems");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("OrderItemOrderId", "OrderItemId");
+                                });
+
+                            b1.OwnsOne("eMarket.Domain.Catalog.Products.ValueObjects.Money", "OriginalUnitPrice", b2 =>
+                                {
+                                    b2.Property<Guid>("OrderItemOrderId")
+                                        .HasColumnType("uniqueidentifier");
+
+                                    b2.Property<Guid>("OrderItemId")
+                                        .HasColumnType("uniqueidentifier");
+
+                                    b2.Property<decimal>("Amount")
+                                        .HasPrecision(18, 2)
+                                        .HasColumnType("decimal(18,2)")
+                                        .HasColumnName("OriginalUnitPrice");
+
+                                    b2.Property<int>("Currency")
+                                        .HasColumnType("int")
+                                        .HasColumnName("OriginalCurrency");
+
+                                    b2.HasKey("OrderItemOrderId", "OrderItemId");
+
+                                    b2.ToTable("OrderItems");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("OrderItemOrderId", "OrderItemId");
+                                });
 
                             b1.OwnsOne("eMarket.Domain.Catalog.Products.ValueObjects.Money", "UnitPrice", b2 =>
                                 {
@@ -1484,6 +1932,12 @@ namespace eMarket.Infrastructure.Migrations
                                     b2.WithOwner()
                                         .HasForeignKey("OrderItemOrderId", "OrderItemId");
                                 });
+
+                            b1.Navigation("DiscountAmount")
+                                .IsRequired();
+
+                            b1.Navigation("OriginalUnitPrice")
+                                .IsRequired();
 
                             b1.Navigation("UnitPrice")
                                 .IsRequired();
@@ -1663,6 +2117,8 @@ namespace eMarket.Infrastructure.Migrations
 
             modelBuilder.Entity("eMarket.Domain.Businesses.Entities.Business", b =>
                 {
+                    b.Navigation("Branches");
+
                     b.Navigation("Members");
                 });
 
@@ -1676,6 +2132,11 @@ namespace eMarket.Infrastructure.Migrations
                     b.Navigation("OptionGroups");
 
                     b.Navigation("Variants");
+                });
+
+            modelBuilder.Entity("eMarket.Domain.Promotions.Entities.Promotion", b =>
+                {
+                    b.Navigation("Items");
                 });
 
             modelBuilder.Entity("eMarket.Domain.Sales.Carts.Cart", b =>

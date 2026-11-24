@@ -5,6 +5,7 @@ using eMarket.Application.Common.Interfaces.Payments;
 using eMarket.Application.Common.IRepositories;
 using eMarket.Application.Sales.Orders.Services;
 using eMarket.Application.Sales.Payments.Services;
+using eMarket.Application.Services;
 using eMarket.Infrastructure.Admin;
 using eMarket.Infrastructure.BackgroundJobs;
 using eMarket.Infrastructure.Identity.Jwt;
@@ -14,6 +15,7 @@ using eMarket.Infrastructure.Persistence;
 using eMarket.Infrastructure.Persistence.Interceptors;
 using eMarket.Infrastructure.Persistence.Repositories;
 using eMarket.Infrastructure.Security;
+using eMarket.Infrastructure.Services;
 using eMarket.Infrastructure.Subscriptions;
 using FluentValidation;
 using MediatR;
@@ -54,12 +56,13 @@ public static class DependencyInjection
             typeof(ValidationBehavior<,>));
 
         services.AddScoped<PublishDomainEventsInterceptor>();
-
-        services.AddDbContext<AppDbContext>(options =>
+        services.AddDbContext<AppDbContext>((serviceProvider, options) =>
         {
             options.UseSqlServer(
-                configuration.GetConnectionString(
-                    "DefaultConnection"));
+                configuration.GetConnectionString("DefaultConnection"));
+
+            options.AddInterceptors(
+                serviceProvider.GetRequiredService<PublishDomainEventsInterceptor>());
         });
         services.AddScoped<OrderPaymentConfirmationService>();
         services.AddScoped<OrderStockReleaseService>();
@@ -69,6 +72,7 @@ public static class DependencyInjection
         services.AddScoped<IUserRepository,UserRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<ICategoryRepository, CategoryRepository>();
+        services.AddScoped<IPromotionRepository, PromotionRepository>();
         services.AddScoped<IOrderRepository, OrderRepository>();
         services.AddScoped<IPaymentRepository, PaymentRepository>();
         services.AddScoped<IBusinessRepository, BusinessRepository>();
@@ -91,12 +95,14 @@ public static class DependencyInjection
 
         services.AddScoped<IBusinessDbContext>(sp =>
             sp.GetRequiredService<AppDbContext>());
+        services.AddScoped<ISellerPlanFeatureService, SellerPlanFeatureService>();
 
         services.AddScoped<ICatalogDbContext>(sp =>
             sp.GetRequiredService<AppDbContext>());
-
+        services.AddScoped<INotificationDbContext>(
+    provider => provider.GetRequiredService<AppDbContext>());
         services.AddScoped<IProductRepository, ProductRepository>();
-
+        services.AddScoped<IPromotionPricingService, PromotionPricingService>();
         services.AddScoped<
     ISellerPlanPaymentGateway,
     IyzicoSellerPlanPaymentGateway>();
@@ -104,6 +110,8 @@ public static class DependencyInjection
         services.AddScoped<IIdentityDbContext>(sp =>
             sp.GetRequiredService<AppDbContext>());
         services.AddScoped<IEmailService, ResendEmailService>();
+        services.AddScoped<IReportsDbContext>(sp =>
+    sp.GetRequiredService<AppDbContext>());
         services.AddOptions();
         services.AddHttpClient();
 
@@ -255,14 +263,29 @@ public static class DependencyInjection
             throw new InvalidOperationException(
                 "DefaultConnection is not configured.");
         }
-
+        
         services
             .AddAuthentication(
                 JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
             {
+
                 options.Events = new JwtBearerEvents
                 {
+                    OnMessageReceived = context =>
+                    {
+                        var accessToken = context.Request.Query["access_token"];
+
+                        var requestPath = context.HttpContext.Request.Path;
+
+                        if (!string.IsNullOrEmpty(accessToken) &&
+                            requestPath.StartsWithSegments("/hubs/notifications"))
+                        {
+                            context.Token = accessToken;
+                        }
+
+                        return Task.CompletedTask;
+                    },
                     OnChallenge = async context =>
                     {
                         context.HandleResponse();

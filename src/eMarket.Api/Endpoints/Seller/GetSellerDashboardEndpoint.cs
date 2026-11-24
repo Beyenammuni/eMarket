@@ -1,6 +1,9 @@
+
 using eMarket.Api.Common;
 using eMarket.Application.Businesses.Queries.GetSellerDashboard;
 using eMarket.Application.Common.Interfaces;
+using eMarket.Application.Common.Authorization;
+using eMarket.Domain.Businesses;
 using eMarket.SharedKernel.Constants;
 using MediatR;
 
@@ -11,16 +14,37 @@ public static class GetSellerDashboardEndpoint
     public static IEndpointRouteBuilder MapGetSellerDashboardEndpoint(
         this IEndpointRouteBuilder app)
     {
-
-
         app.MapGet(
             "/api/seller/dashboard",
             async (
                 int? days,
                 Guid? businessId,
                 ISender sender,
+                ICurrentUser currentUser,
+                IBusinessAuthorization authorization,
                 CancellationToken cancellationToken) =>
             {
+                if (businessId is null || businessId == Guid.Empty)
+                    return Results.BadRequest(
+                        new { message = "BusinessId is required." });
+
+                if (currentUser.UserId is null)
+                    return ApiResults.Unauthorized();
+
+                var isSuperAdmin =
+                    currentUser.IsInRole(Roles.SuperAdmin);
+
+                if (!isSuperAdmin)
+                {
+                    var allowed = await authorization.HasPermissionAsync(
+                        BusinessId.Create(businessId.Value),
+                        eMarket.Application.Common.Authorization.Permissions.Business.View, 
+                        cancellationToken);
+
+                    if (!allowed)
+                        return ApiResults.Forbidden();
+                }
+
                 var query = new GetSellerDashboardQuery(
                     days ?? 30,
                     businessId);
@@ -35,37 +59,7 @@ public static class GetSellerDashboardEndpoint
                 return Results.Ok(result.Value);
             })
             .WithName("GetSellerDashboard")
-            .WithTags("Seller Dashboard")
-            .AddEndpointFilter(async (context, next) =>
-            {
-                var currentUser =
-                    context.HttpContext.RequestServices
-                        .GetRequiredService<ICurrentUser>();
-
-                if (currentUser.UserId is null)
-                    return ApiResults.Unauthorized();
-
-                var isGlobalAdmin =
-                    currentUser.IsInRole(Roles.Admin) ||
-                    currentUser.IsInRole(Roles.SuperAdmin);
-
-                if (isGlobalAdmin)
-                    return await next(context);
-
-                var authorization =
-                    context.HttpContext.RequestServices
-                        .GetRequiredService<IBusinessAuthorization>();
-
-                var allowed =
-                    await authorization.HasPermissionOnAnyBusinessAsync(
-                        Permissions.Business.View,
-                        context.HttpContext.RequestAborted);
-
-                if (!allowed)
-                    return ApiResults.Forbidden();
-
-                return await next(context);
-            });
+            .WithTags("Seller Dashboard");
 
         return app;
     }

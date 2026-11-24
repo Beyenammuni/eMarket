@@ -6,6 +6,7 @@ using eMarket.Application.Identity.Auth.Commands.Logout;
 using eMarket.Application.Identity.Auth.Commands.RefreshToken;
 using eMarket.Application.Identity.Auth.Commands.Register;
 using eMarket.Application.Identity.Auth.Commands.ResetPassword;
+using eMarket.Application.Identity.Users.SetCustomerIdentityNumber;
 using MediatR;
 
 namespace eMarket.Api.Endpoints.Identity;
@@ -23,7 +24,8 @@ public static class AuthEndpoints
         group.MapPost("/forgot-password", ForgotPassword);
         group.MapPost("/reset-password", ResetPassword);
         group.MapPost("/change-password", ChangePassword).RequireAuthorization();
-
+        group.MapPut("/identity-number", SetCustomerIdentityNumber)
+    .RequireAuthorization();
         return app;
     }
 
@@ -51,7 +53,7 @@ public static class AuthEndpoints
             {
                 HttpOnly = true,
                 Secure = true,
-                SameSite = SameSiteMode.Lax,
+                SameSite = SameSiteMode.None,
                 Expires = DateTimeOffset.UtcNow.AddDays(7),
                 Path = "/api/auth"
             });
@@ -117,7 +119,15 @@ public static class AuthEndpoints
         });
     }
 
+    private static async Task<IResult> SetCustomerIdentityNumber(
+    SetCustomerIdentityNumberCommand command,
+    ISender sender,
+    CancellationToken cancellationToken)
+    {
+        var result = await sender.Send(command, cancellationToken);
 
+        return ToResult(result);
+    }
     private static async Task<IResult> Logout(
         ISender sender,
         HttpContext httpContext,

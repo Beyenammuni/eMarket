@@ -38,4 +38,7 @@ public interface IBusinessRepository
         BusinessId businessId,
         UserId userId,
         CancellationToken cancellationToken = default);
+    Task<Business?> GetWithBranchesAsync(
+    BusinessId id,
+    CancellationToken cancellationToken = default);
 }

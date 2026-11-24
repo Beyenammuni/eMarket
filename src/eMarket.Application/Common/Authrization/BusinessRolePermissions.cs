@@ -1,5 +1,4 @@
 using eMarket.Domain.Businesses.ValueObjects;
-using eMarket.Domain.Subscriptions;
 using static eMarket.Application.Common.Authorization.Permissions;
 
 namespace eMarket.Application.Common.Authorization;
@@ -18,6 +17,8 @@ public static class BusinessRolePermissions
                 Business.TransferOwnership,
                 Business.Suspend,
                 Business.Activate,
+                Branches.View,
+                 Branches.Manage,
                 Products.View,
                 Products.Create,
                 Products.Update,
@@ -25,7 +26,12 @@ public static class BusinessRolePermissions
                 Products.Activate,
                 Products.Deactivate,
                 Products.ManageStock,
-
+               Permissions.Promotions.View,
+Permissions.Promotions.Create,
+Permissions.Promotions.Update,
+Permissions.Promotions.Delete,
+Permissions.Promotions.Activate,
+Permissions.Promotions.Pause,
                 Categories.View,
                 Categories.Create,
                 Categories.Update,
@@ -50,7 +56,8 @@ public static class BusinessRolePermissions
                 Business.View,
                 Business.Update,
                 Business.ManageMembers,
-
+                Branches.View,
+                Branches.Manage,
                 Products.View,
                 Products.Create,
                 Products.Update,
@@ -77,12 +84,14 @@ public static class BusinessRolePermissions
                 Business.View,
                 Products.View,
                 Products.ManageStock,
+                Branches.View,
                 Categories.View
             ],
 
             [BusinessRole.Cashier.Id] =
             [
                 Business.View,
+                Branches.View,
                 Products.View,
                 Orders.View,
                 Orders.Manage,
@@ -93,6 +102,7 @@ public static class BusinessRolePermissions
             [BusinessRole.DeliveryManager.Id] =
             [
                 Business.View,
+                Branches.View,
                 Orders.View,
                 Orders.Deliver
             ],
@@ -100,6 +110,7 @@ public static class BusinessRolePermissions
             [BusinessRole.Accountant.Id] =
             [
                 Business.View,
+                Branches.View,
                 Orders.View,
                 Payments.View
             ],
@@ -108,6 +119,7 @@ public static class BusinessRolePermissions
             [
                 Business.View,
                 Products.View,
+                Branches.View,
                 Orders.View,
                 Categories.View
             ]

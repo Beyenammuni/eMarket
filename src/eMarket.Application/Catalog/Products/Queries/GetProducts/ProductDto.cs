@@ -1,14 +1,23 @@
 
 using eMarket.Domain.Common;
+using eMarket.Domain.Promotions.Enums;
 
 namespace eMarket.Application.Catalog.Products.Queries.GetProducts;
+
+public sealed record PromotionPriceDto(
+    decimal OriginalPrice,
+    decimal DiscountedPrice,
+    DiscountType DiscountType,
+    decimal DiscountValue,
+    string PromotionName);
 
 public sealed record ProductVariantDto(
     Guid Id,
     string Name,
     decimal Price,
     int StockQuantity,
-    bool IsActive);
+    bool IsActive,
+    PromotionPriceDto? Promotion = null);
 
 public sealed record ProductDto(
     Guid Id,
@@ -19,4 +28,5 @@ public sealed record ProductDto(
     string? ImageUrl,
     int StockQuantity,
     string Status,
-    IReadOnlyList<ProductVariantDto> Variants);
+    IReadOnlyList<ProductVariantDto> Variants,
+    PromotionPriceDto? Promotion = null);

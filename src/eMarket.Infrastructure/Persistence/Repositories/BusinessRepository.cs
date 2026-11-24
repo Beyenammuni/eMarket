@@ -115,5 +115,14 @@ public sealed class BusinessRepository : IBusinessRepository
                     x.IsActive,
                 cancellationToken);
     }
-
+    public async Task<Business?> GetWithBranchesAsync(
+    BusinessId id,
+    CancellationToken cancellationToken = default)
+    {
+        return await _context.Businesses
+            .Include(x => x.Branches)
+            .FirstOrDefaultAsync(
+                x => x.Id == id,
+                cancellationToken);
+    }
 }

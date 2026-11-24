@@ -6,6 +6,7 @@ using eMarket.Domain.Identity;
 using eMarket.Domain.Sales.Orders;
 using eMarket.Domain.Sales.Orders.Events;
 using eMarket.Domain.Sales.Orders.ValueObjects;
+using eMarket.SharedKernel.Results;
 using FluentAssertions;
 using Xunit;
 
@@ -13,11 +14,27 @@ namespace eMarket.UnitTests.Sales.Orders;
 
 public class OrderTests
 {
+    private static Result AddTestItem(
+    Order order,
+    int quantity = 1)
+    {
+        var price = Money.Create(3000m, Currency.TRY);
+        var discount = Money.Create(0m, Currency.TRY);
+
+        return order.AddItem(
+            ProductId.New(),
+            "iPhone 16",
+            price,
+            discount,
+            price,
+            quantity);
+    }
     [Fact]
     public void Create_Should_Create_Order()
     {
         var userId = UserId.New();
         var businessId = BusinessId.New();
+        
 
         var addressResult = DeliveryAddress.Create(
             "John Doe",
@@ -37,10 +54,11 @@ public class OrderTests
         addressResult.IsSuccess.Should().BeTrue();
 
         var result = Order.Create(
-            userId,
-            businessId,
-            addressResult.Value!,
-            shippingFee);
+     userId,
+     businessId,
+     BranchId.New(),
+     addressResult.Value!,
+     shippingFee);
 
         result.IsSuccess.Should().BeTrue();
 
@@ -68,11 +86,7 @@ public class OrderTests
     {
         var order = CreateOrder();
 
-        var result = order.AddItem(
-            ProductId.New(),
-            "iPhone 16",
-            Money.Create(3000m, Currency.TRY),
-            2);
+        var result = AddTestItem(order, 2);
 
         result.IsSuccess.Should().BeTrue();
         order.Items.Should().ContainSingle();
@@ -84,11 +98,7 @@ public class OrderTests
     {
         var order = CreateOrder();
 
-        var result = order.AddItem(
-            ProductId.New(),
-            "iPhone 16",
-            Money.Create(3000m, Currency.TRY),
-            0);
+        var result = AddTestItem(order, 0);
 
         result.IsFailure.Should().BeTrue();
         order.Items.Should().BeEmpty();
@@ -99,11 +109,7 @@ public class OrderTests
     {
         var order = CreateOrder();
 
-        order.AddItem(
-            ProductId.New(),
-            "iPhone 16",
-            Money.Create(3000m, Currency.TRY),
-            1);
+        AddTestItem(order);
 
         var result = order.MarkAsPaid();
 
@@ -222,11 +228,11 @@ public class OrderTests
         addressResult.IsSuccess.Should().BeTrue();
         var shippingFee = 0.0m;
         var orderResult = Order.Create(
-            UserId.New(),
-           BusinessId.New(),
-            addressResult.Value!,
-            shippingFee);
-
+    UserId.New(),
+    BusinessId.New(),
+    BranchId.New(),
+    addressResult.Value!,
+    shippingFee);
         orderResult.IsSuccess.Should().BeTrue();
 
 
@@ -237,11 +243,7 @@ public class OrderTests
     {
         var order = CreateOrder();
 
-        order.AddItem(
-            ProductId.New(),
-            "iPhone 16",
-            Money.Create(3000m, Currency.TRY),
-            1);
+        AddTestItem(order);
 
         return order;
     }

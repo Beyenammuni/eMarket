@@ -1,4 +1,6 @@
 
+using eMarket.Application.Catalog.Products.Queries.GetProducts;
+
 namespace eMarket.Application.Catalog.Products.Queries.GetProductById;
 
 public sealed record GetProductByIdResponse(
@@ -14,7 +16,8 @@ public sealed record GetProductByIdResponse(
     string Status,
     DateTime CreatedAt,
     IReadOnlyCollection<ProductVariantResponse> Variants,
-    IReadOnlyCollection<ProductOptionGroupResponse> OptionGroups);
+    IReadOnlyCollection<ProductOptionGroupResponse> OptionGroups,
+    PromotionPriceDto? Promotion = null);
 
 public sealed record ProductVariantResponse(
     Guid Id,
@@ -22,7 +25,8 @@ public sealed record ProductVariantResponse(
     string? Sku,
     decimal Price,
     int StockQuantity,
-    bool IsActive);
+    bool IsActive,
+    PromotionPriceDto? Promotion = null);
 
 public sealed record ProductOptionGroupResponse(
     Guid Id,

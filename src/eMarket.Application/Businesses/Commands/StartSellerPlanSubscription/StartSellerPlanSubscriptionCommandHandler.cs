@@ -174,19 +174,25 @@ public sealed class StartSellerPlanSubscriptionCommandHandler
         try
         {
             gatewayResult = await _paymentGateway.CreatePaymentAsync(
-                new SellerPlanPaymentRequest(
-                    payment.Id,
-                    plan.Price,
-                    plan.Currency,
-request.ReturnUrl,
-callbackUrl,
-user.Id.Value.ToString(),
-                    user.FullName.FirstName,
-                    user.FullName.LastName,
-                    user.Email.Value,
-                    user.PhoneNumber.Value,
-                    identityNumber),
-                cancellationToken);
+      new SellerPlanPaymentRequest(
+          payment.Id,
+          plan.Price,
+          plan.Currency,
+          request.ReturnUrl,
+          callbackUrl,
+          user.Id.Value.ToString(),
+          user.FullName.FirstName,
+          user.FullName.LastName,
+          user.Email.Value,
+          user.PhoneNumber.Value,
+          identityNumber,
+          new SellerPlanBillingAddress(
+              business.MerchantDetails.LegalName,
+              business.MerchantDetails.City,
+              business.MerchantDetails.Country,
+              business.MerchantDetails.Address)
+      ),
+      cancellationToken);
         }
         catch
         {

@@ -1,5 +1,10 @@
-
 namespace eMarket.Application.Common.Interfaces.Payments;
+
+public sealed record SellerPlanBillingAddress(
+    string ContactName,
+    string City,
+    string Country,
+    string Description);
 
 public sealed record SellerPlanPaymentRequest(
     Guid PaymentId,
@@ -12,7 +17,8 @@ public sealed record SellerPlanPaymentRequest(
     string BuyerSurname,
     string BuyerEmail,
     string BuyerPhone,
-    string BuyerIdentityNumber);
+    string BuyerIdentityNumber,
+    SellerPlanBillingAddress BillingAddress);
 
 public interface ISellerPlanPaymentGateway
 {
@@ -21,6 +27,7 @@ public interface ISellerPlanPaymentGateway
         CancellationToken cancellationToken = default);
 
     Task<PaymentCheckoutResult> GetCheckoutResultAsync(
-        string token,
-        CancellationToken cancellationToken = default);
+    string token,
+    string conversationId,
+    CancellationToken cancellationToken = default);
 }

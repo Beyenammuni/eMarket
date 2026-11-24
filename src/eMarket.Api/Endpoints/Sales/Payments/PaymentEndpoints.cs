@@ -2,23 +2,23 @@ using eMarket.Api.Common;
 using eMarket.Api.Common.Authorization;
 using eMarket.Application.Businesses.Commands.CompleteSellerPlanCheckout;
 using eMarket.Application.Common.Interfaces.Payments;
+using eMarket.Application.Common.IRepositories;
 using eMarket.Application.Sales.Payments.Commands.CompleteOrderCheckout;
 using eMarket.Application.Sales.Payments.Commands.CreatePayment;
+using eMarket.Application.Sales.Payments.Queries.GetOrderPaymentStatus;
 using eMarket.Application.Sales.Payments.Queries.GetSubscriptionPayment;
 using eMarket.Application.Subscriptions.Commands.CompleteSubscriptionCheckout;
 using eMarket.Application.Subscriptions.Commands.CreateSubscriptionPayment;
-using eMarket.Infrastructure.Payments.Iyzico;
+using eMarket.Domain.Payments;
 using eMarket.SharedKernel.Constants;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
-using System.Security.Cryptography;
-using System.Text;
-
 namespace eMarket.Api.Endpoints.Payments;
 
 public static class PaymentEndpoints
 {
+
+    // Commands
     public static IEndpointRouteBuilder MapPaymentEndpoints(
         this IEndpointRouteBuilder app)
     {
@@ -57,12 +57,14 @@ public static class PaymentEndpoints
         group.MapPost(
     "/seller-plans/checkout-callback",
     SellerPlanCheckoutCallback);
-
-
-
         group.MapPost(
     "/subscriptions/complete",
     CompleteSubscriptionCheckout)
+    .RequireRoles(Roles.Customer);
+
+        group.MapGet(
+    "/orders/{orderId:guid}",
+    GetOrderPaymentStatus)
     .RequireRoles(Roles.Customer);
 
         return app;
@@ -213,6 +215,7 @@ public static class PaymentEndpoints
     HttpRequest request,
     [FromServices] ISender sender,
      [FromServices] IConfiguration configuration,
+     [FromServices] IPaymentRepository paymentRepository,
     CancellationToken cancellationToken)
     {
         var token =
@@ -253,48 +256,86 @@ public static class PaymentEndpoints
 
         var separator = returnUrl.Contains('?') ? "&" : "?";
 
+        var payment = await paymentRepository.GetByIdAsync(
+    PaymentId.Create(paymentId),
+    cancellationToken);
+
+        if (payment?.OrderId is null)
+            return Results.BadRequest("Order not found.");
+
         return Results.Redirect(
-            $"{returnUrl}{separator}paymentId={paymentId}&status=success");
+            $"{returnUrl}{separator}orderId={payment.OrderId}&paymentId={paymentId}");
+
 
     }
     private static async Task<IResult> SellerPlanCheckoutCallback(
-    HttpRequest request,
-    [FromServices] ISender sender,
-    [FromServices] IConfiguration configuration,
-    CancellationToken cancellationToken)
+     HttpRequest request,
+     [FromServices] ISender sender,
+     [FromServices] IConfiguration configuration,
+     [FromServices] ILoggerFactory loggerFactory,
+     CancellationToken cancellationToken)
     {
         if (!HttpMethods.IsPost(request.Method) ||
-    !request.HasFormContentType)
+            !request.HasFormContentType)
         {
             return Results.BadRequest("Invalid callback request.");
         }
+
         var token = request.Form["token"].FirstOrDefault();
 
         if (string.IsNullOrWhiteSpace(token))
-            return Results.BadRequest("Seller plan checkout token is required.");
+        {
+            return Results.BadRequest(
+                "Seller plan checkout token is required.");
+        }
 
         var paymentIdValue = request.Query["paymentId"].FirstOrDefault();
 
         if (!Guid.TryParse(paymentIdValue, out var paymentId))
+        {
             return Results.BadRequest("Payment ID is required.");
+        }
 
         var result = await sender.Send(
             new CompleteSellerPlanCheckoutCommand(paymentId, token),
             cancellationToken);
 
         var returnUrl = configuration["Payments:SellerPlanReturnUrl"]
-            ?? "http://localhost:5173/seller/plan-payment-result";
+            ?? "http://localhost:5173/dashboard";
 
         var separator = returnUrl.Contains('?') ? "&" : "?";
-
+        var logger = loggerFactory.CreateLogger("SellerPlanPayment");
         if (result.IsFailure)
         {
+            logger.LogError(
+                "Seller plan payment failed. PaymentId: {PaymentId}, Error: {@Error}",
+                paymentId,
+                result.Error);
+
             return Results.Redirect(
                 $"{returnUrl}{separator}status=failed&paymentId={paymentId}");
         }
 
+        logger.LogInformation(
+            "Seller plan payment completed successfully. PaymentId: {PaymentId}",
+            paymentId);
+
         return Results.Redirect(
             $"{returnUrl}{separator}status=success&paymentId={paymentId}");
+    }
+    private static async Task<IResult> GetOrderPaymentStatus(
+    Guid orderId,
+    [FromServices] ISender sender,
+    CancellationToken cancellationToken)
+    {
+        var result = await sender.Send(
+            new GetOrderPaymentStatusQuery(orderId),
+            cancellationToken);
+
+        if (result.IsFailure)
+            return Results.NotFound(result.Error);
+
+        return Results.Ok(result.Value);
     }
 }
 

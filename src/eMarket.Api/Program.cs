@@ -5,17 +5,24 @@ using eMarket.Api.Endpoints.Auth;
 using eMarket.Api.Endpoints.Catalog.Categories;
 using eMarket.Api.Endpoints.Catalog.Products;
 using eMarket.Api.Endpoints.Identity;
+using eMarket.Api.Endpoints.Inventory;
+using eMarket.Api.Endpoints.Notifications;
 using eMarket.Api.Endpoints.Orders;
 using eMarket.Api.Endpoints.Payments;
+using eMarket.Api.Endpoints.Promotions;
+using eMarket.Api.Endpoints.Reports;
 using eMarket.Api.Endpoints.Sales.Carts;
 using eMarket.Api.Endpoints.Seller;
 using eMarket.Api.Endpoints.Subscriptions;
+using eMarket.Api.Hubs;
+using eMarket.Api.Services;
 using eMarket.Application.Catalog.Categories.Commands.UpdateCategory;
+using eMarket.Application.Common.Interfaces;
 using eMarket.Application.Common.Interfaces.Payments;
 using eMarket.Infrastructure.Health;
 using eMarket.Infrastructure.Identity;
+using eMarket.Infrastructure.Persistence.Seeders;
 using Microsoft.AspNetCore.HttpOverrides;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.OpenApi;
 using System.Threading.RateLimiting;
 
@@ -31,6 +38,10 @@ builder.Services.AddProblemDetails(options =>
 });
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddSignalR();
+builder.Services.AddScoped<
+    INotificationRealtimeSender,
+    SignalRNotificationRealtimeSender>();
 builder.Services.AddResponseCompression();
 builder.Services.AddEndpointsApiExplorer();
 
@@ -111,9 +122,11 @@ builder.Services.AddSwaggerGen(options =>
 
 builder.Services.AddScoped<IBusinessContext, BusinessContext>();
 builder.Services.AddHealthChecks()
+
     .AddCheck<DatabaseHealthCheck>("database", tags: ["ready"]);
 builder.Services.AddIdentityServices(builder.Configuration);
 builder.Services.AddScoped<AdminSeeder>();
+builder.Services.AddScoped<SellerPlanSeeder>();
 var app = builder.Build();
 
 app.UseExceptionHandler();
@@ -178,20 +191,41 @@ app.MapBusinessEndpoints();
 app.MapOrderEndpoints();
 app.MapPaymentEndpoints();
 app.MapGetSellerDashboardEndpoint();
+app.MapGetAdvancedSalesReportEndpoint();
+app.MapGetAdvancedInventoryEndpoint();
+app.MapGetAdvancedOrderAnalyticsEndpoint();
+app.MapGetStorePerformanceReportEndpoint();
 app.MapAuthEndpoints();
 app.MapSubscriptionEndpoints();
 app.MapAdminEndpoints();
 app.MapSellerPlanEndpoints();
+app.MapSellerPlanManagementEndpoints();
 app.MapApproveBusinessEndpoint();
 app.MapCloseBusinessEndpoint();
 app.MapUserEndpoints();
 app.MapUserAddressesEndpoints();
+app.MapCreatePromotionEndpoint();
+app.MapGetPromotionsEndpoint();
+app.MapGetActivePromotionsEndpoint();
+app.MapPausePromotionEndpoint();
+app.MapCancelPromotionEndpoint();
+app.MapUpdatePromotionEndpoint();
+app.MapActivatePromotionEndpoint();
+app.MapGetPromotionByIdEndpoint();
+app.MapNotificationsEndpoints();
+app.MapHub<NotificationsHub>("/hubs/notifications")
+   .RequireAuthorization();
 using (var scope = app.Services.CreateScope())
 {
     var seeder = scope.ServiceProvider
         .GetRequiredService<AdminSeeder>();
 
     await seeder.SeedAsync();
+
+    var sellerPlanSeeder = scope.ServiceProvider
+    .GetRequiredService<SellerPlanSeeder>();
+
+    await sellerPlanSeeder.SeedAsync();
 }
 
 
@@ -201,6 +235,7 @@ if (app.Environment.IsDevelopment())
 
     var subMerchantService = scope.ServiceProvider
         .GetRequiredService<IIyzicoSubMerchantService>();
+
 
     var result = await subMerchantService.UpdatePersonalSubMerchantAsync(
         Guid.Parse("5b7ab094-9f80-4a99-9bef-a386fa076f78"));

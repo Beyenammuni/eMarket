@@ -1,3 +1,4 @@
+using eMarket.Application.Common.Constants;
 using eMarket.Application.Common.Interfaces;
 using eMarket.Application.Common.IRepositories;
 using eMarket.Domain.Businesses;
@@ -17,14 +18,17 @@ internal sealed class GetBusinessSubscriptionsQueryHandler
     private readonly ISubscriptionDbContext _context;
     private readonly IUserRepository _userRepository;
     private readonly IProductRepository _productRepository;
+    private readonly ISellerPlanFeatureService _sellerPlanFeatureService;
     public GetBusinessSubscriptionsQueryHandler(
         ISubscriptionDbContext context,
         IUserRepository userRepository,
-        IProductRepository productRepository)
+        IProductRepository productRepository,
+        ISellerPlanFeatureService sellerPlanFeatureService)
     {
         _context = context;
         _userRepository = userRepository;
         _productRepository = productRepository;
+        _sellerPlanFeatureService = sellerPlanFeatureService;
     }
 
     public async Task<
@@ -35,6 +39,18 @@ internal sealed class GetBusinessSubscriptionsQueryHandler
     {
         var businessId =
             BusinessId.Create(request.BusinessId);
+
+        var hasFeature = await _sellerPlanFeatureService.HasFeatureAsync(
+    request.BusinessId,
+    SellerPlanFeatureCodes.Subscriptions.Management,
+    ct);
+
+        if (!hasFeature)
+        {
+            return Result<
+                IReadOnlyCollection<GetBusinessSubscriptionResponse>>
+                .Failure(SubscriptionErrors.FeatureNotAvailable);
+        }
 
         var subscriptions = await _context.Subscriptions
             .AsNoTracking()

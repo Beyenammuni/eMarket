@@ -1,11 +1,15 @@
+
+using eMarket.Application.Common.Constants;
 using eMarket.Application.Common.IRepositories;
+using eMarket.Application.Common.Interfaces;
 using eMarket.SharedKernel.Results;
 using MediatR;
 
 namespace eMarket.Application.Businesses.Queries.GetSellerDashboard;
 
 internal sealed class GetSellerDashboardQueryHandler(
-    ISellerDashboardRepository repository)
+    ISellerDashboardRepository repository,
+    ISellerPlanFeatureService featureService)
     : IRequestHandler<
         GetSellerDashboardQuery,
         Result<SellerDashboardResponse>>
@@ -14,17 +18,44 @@ internal sealed class GetSellerDashboardQueryHandler(
         GetSellerDashboardQuery request,
         CancellationToken cancellationToken)
     {
-        var days = Math.Clamp(request.Days, 7, 90);
+        if (request.BusinessId is null ||
+            request.BusinessId == Guid.Empty)
+        {
+            return Result<SellerDashboardResponse>.Failure(
+                new Error("BusinessId.Required", "BusinessId is required."));
+        }
+
+        var businessId = request.BusinessId.Value;
+
+        var hasAdvancedAnalytics =
+            await featureService.HasFeatureAsync(
+                businessId,
+                SellerPlanFeatureCodes.Dashboard.AdvancedAnalytics,
+                cancellationToken);
+
+        var hasTopProducts =
+            await featureService.HasFeatureAsync(
+                businessId,
+                SellerPlanFeatureCodes.Dashboard.TopProducts,
+                cancellationToken);
+
+        var hasExtendedPeriod =
+            await featureService.HasFeatureAsync(
+                businessId,
+                SellerPlanFeatureCodes.Dashboard.ExtendedPeriod,
+                cancellationToken);
+
+        var maxDays = hasExtendedPeriod ? 90 : 30;
+        var days = Math.Clamp(request.Days, 7, maxDays);
 
         var now = DateTime.UtcNow;
-
         var fromUtc = now.Date.AddDays(-(days - 1));
 
         var data = await repository.GetDashboardAsync(
-    fromUtc,
-    now,
-    request.BusinessId,
-    cancellationToken);
+            fromUtc,
+            now,
+            businessId,
+            cancellationToken);
 
         return Result<SellerDashboardResponse>.Success(
             new SellerDashboardResponse(
@@ -49,8 +80,14 @@ internal sealed class GetSellerDashboardQueryHandler(
                 data.TotalRevenue,
                 data.RevenueToday,
 
-                data.RevenueTrend,
+                hasAdvancedAnalytics
+                    ? data.RevenueTrend
+                    : Array.Empty<SellerRevenuePoint>(),
+
                 data.RecentOrders,
-                data.TopProducts));
+
+                hasTopProducts
+                    ? data.TopProducts
+                    : Array.Empty<SellerTopProduct>()));
     }
 }

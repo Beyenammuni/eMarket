@@ -1,22 +1,22 @@
 
 using eMarket.Application.Common.Interfaces;
-using eMarket.Application.Common.IRepositories;
-using eMarket.Domain.Catalog.Products;
+using eMarket.Domain.Inventory.Entities;
 using eMarket.Domain.Sales.Orders;
 using eMarket.SharedKernel.Results;
+using Microsoft.EntityFrameworkCore;
 
 namespace eMarket.Application.Sales.Orders.Services;
 
 public sealed class OrderStockReleaseService
 {
-    private readonly IProductRepository _productRepository;
+    private readonly IBusinessDbContext _businessDbContext;
     private readonly IUnitOfWork _unitOfWork;
 
     public OrderStockReleaseService(
-        IProductRepository productRepository,
+        IBusinessDbContext businessDbContext,
         IUnitOfWork unitOfWork)
     {
-        _productRepository = productRepository;
+        _businessDbContext = businessDbContext;
         _unitOfWork = unitOfWork;
     }
 
@@ -30,72 +30,72 @@ public sealed class OrderStockReleaseService
             return Result.Failure(OrderErrors.InvalidStatus);
         }
 
-        var products = new List<(
-            Domain.Sales.Orders.Entities.OrderItem Item,
-            Product Product)>();
-
-        foreach (var item in order.Items)
+        if (order.BranchId is null)
         {
-            var product = await _productRepository.GetByIdAsync(
-                item.ProductId,
-                cancellationToken);
-
-            if (product is null)
-                return Result.Failure(OrderErrors.NotFound);
-
-            if (item.VariantId.HasValue &&
-                !product.Variants.Any(v => v.Id == item.VariantId.Value))
-            {
-                return Result.Failure(OrderErrors.InvalidStatus);
-            }
-
-            products.Add((item, product));
+            return Result.Failure(
+                OrderErrors.InvalidStatus);
         }
 
-        var cancelResult = order.Cancel();
+        var releaseResult = Result.Failure(
+            OrderErrors.InvalidStatus);
 
-        if (cancelResult.IsFailure)
-            return cancelResult;
-
-        foreach (var entry in products)
-        {
-            if (entry.Item.VariantId.HasValue)
+        await _businessDbContext.ExecuteInSerializableTransactionAsync(
+            async ct =>
             {
-                var variant = entry.Product.Variants.First(
-                    v => v.Id == entry.Item.VariantId.Value);
+                var inventories = new List<(
+                    Domain.Sales.Orders.Entities.OrderItem Item,
+                    BranchInventory Inventory)>();
 
-                try
+                // Load and validate all inventory records first.
+                foreach (var item in order.Items)
                 {
-                    variant.IncreaseStock(entry.Item.Quantity);
+                    var inventory = await _businessDbContext.BranchInventories
+                        .FirstOrDefaultAsync(
+                            x =>
+                                x.BranchId == order.BranchId &&
+                                x.ProductId == item.ProductId &&
+                                x.VariantId == item.VariantId,
+                            ct);
+
+                    if (inventory is null)
+                    {
+                        releaseResult = Result.Failure(
+                            OrderErrors.NotFound);
+                        return;
+                    }
+
+                    inventories.Add((item, inventory));
                 }
-                catch (ArgumentOutOfRangeException)
+
+                var cancelResult = order.Cancel();
+
+                if (cancelResult.IsFailure)
                 {
-                    return Result.Failure(
-                        ProductErrors.InvalidStock);
+                    releaseResult = cancelResult;
+                    return;
                 }
-                catch (OverflowException)
+
+                // Restore stock to the same branch.
+                foreach (var entry in inventories)
                 {
-                    return Result.Failure(
-                        ProductErrors.InvalidStock);
+                    entry.Inventory.IncreaseStock(
+                        entry.Item.Quantity);
                 }
-            }
-            else
-            {
-                var stockResult = entry.Product.IncreaseStock(
-                    entry.Item.Quantity);
 
-                if (stockResult.IsFailure)
-                    return stockResult;
-            }
-        }
+                var markReleasedResult = order.MarkStockReleased();
 
-        var releaseResult = order.MarkStockReleased();
+                if (markReleasedResult.IsFailure)
+                {
+                    throw new InvalidOperationException(
+                        "Failed to mark order stock as released.");
+                }
 
-        if (releaseResult.IsFailure)
-            return releaseResult;
+                await _unitOfWork.SaveChangesAsync(ct);
 
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+                releaseResult = Result.Success();
+            },
+            cancellationToken);
 
-        return Result.Success();
+        return releaseResult;
     }
 }

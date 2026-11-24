@@ -1,6 +1,10 @@
-using eMarket.Application.Common.Interfaces;
+
 using eMarket.Application.Common.IRepositories;
+using eMarket.Application.Catalog.Products.Queries.GetProducts;
 using eMarket.Domain.Catalog.Products;
+using eMarket.Domain.Catalog.Products.ValueObjects;
+using eMarket.Domain.Common;
+using eMarket.Domain.Promotions.Entities;
 using eMarket.SharedKernel.Results;
 using MediatR;
 
@@ -10,11 +14,14 @@ internal sealed class GetProductByIdHandler
     : IRequestHandler<GetProductByIdQuery, Result<GetProductByIdResponse>>
 {
     private readonly IProductRepository _repository;
+    private readonly IPromotionRepository _promotionRepository;
 
     public GetProductByIdHandler(
-        IProductRepository repository)
+        IProductRepository repository,
+        IPromotionRepository promotionRepository)
     {
         _repository = repository;
+        _promotionRepository = promotionRepository;
     }
 
     public async Task<Result<GetProductByIdResponse>> Handle(
@@ -31,6 +38,58 @@ internal sealed class GetProductByIdHandler
                 .Failure(ProductErrors.NotFound);
         }
 
+        var promotions = await _promotionRepository.GetActiveForProductAsync(
+            product.BusinessId,
+            product.Id,
+            DateTime.UtcNow,
+            cancellationToken);
+
+        var promotionData = promotions
+            .SelectMany(promotion =>
+                promotion.Items
+                    .Where(item => item.ProductId.Value == product.Id.Value)
+                    .Select(item => (Promotion: promotion, Item: item)))
+            .FirstOrDefault();
+
+        PromotionPriceDto? productPromotion = null;
+
+        if (promotionData.Promotion is not null &&
+            promotionData.Item is not null)
+        {
+            productPromotion = CreatePromotionPrice(
+                product.Price,
+                promotionData.Promotion,
+                promotionData.Item);
+        }
+
+        var variants = product.Variants
+            .Select(variant =>
+            {
+                PromotionPriceDto? variantPromotion = null;
+
+                if (promotionData.Promotion is not null &&
+                    promotionData.Item is not null)
+                {
+                    var originalPrice = Money.Create(
+                        variant.Price,
+                        product.Price.Currency);
+
+                    variantPromotion = CreatePromotionPrice(
+                        originalPrice,
+                        promotionData.Promotion,
+                        promotionData.Item);
+                }
+
+                return new ProductVariantResponse(
+                    variant.Id,
+                    variant.Name,
+                    variant.Sku,
+                    variant.Price,
+                    variant.StockQuantity,
+                    variant.IsActive,
+                    variantPromotion);
+            })
+            .ToList();
 
         return Result<GetProductByIdResponse>.Success(
             new GetProductByIdResponse(
@@ -45,34 +104,48 @@ internal sealed class GetProductByIdHandler
                 product.StockQuantity,
                 product.Status.ToString(),
                 product.CreatedAt,
-
-                product.Variants
-                    .Select(v => new ProductVariantResponse(
-                        v.Id,
-                        v.Name,
-                        v.Sku,
-                        v.Price,
-                        v.StockQuantity,
-                        v.IsActive))
-                    .ToList(),
-
+                variants,
                 product.OptionGroups
-                    .Select(g => new ProductOptionGroupResponse(
-                        g.Id,
-                        g.Name,
-                        g.IsRequired,
-                        g.MinSelections,
-                        g.MaxSelections,
-                        g.DisplayOrder,
-                        g.Options
-                            .Select(o => new ProductOptionResponse(
-                                o.Id,
-                                o.Name,
-                                o.AdditionalPrice,
-                                o.IsActive,
-                                o.DisplayOrder))
+                    .Select(group => new ProductOptionGroupResponse(
+                        group.Id,
+                        group.Name,
+                        group.IsRequired,
+                        group.MinSelections,
+                        group.MaxSelections,
+                        group.DisplayOrder,
+                        group.Options
+                            .Select(option => new ProductOptionResponse(
+                                option.Id,
+                                option.Name,
+                                option.AdditionalPrice,
+                                option.IsActive,
+                                option.DisplayOrder))
                             .ToList()))
-                    .ToList()));
+                    .ToList(),
+                productPromotion));
+    }
 
+    private static PromotionPriceDto? CreatePromotionPrice(
+        Money originalPrice,
+        Promotion promotion,
+        PromotionItem promotionItem)
+    {
+        try
+        {
+            var discountedPrice =
+                promotionItem.CalculateDiscountedPrice(originalPrice);
+
+            return new PromotionPriceDto(
+                originalPrice.Amount,
+                discountedPrice.Amount,
+                promotionItem.DiscountType,
+                promotionItem.DiscountValue,
+                promotion.Name);
+        }
+        catch (InvalidOperationException)
+        {
+            // The fixed discount is not valid for this price.
+            return null;
+        }
     }
 }

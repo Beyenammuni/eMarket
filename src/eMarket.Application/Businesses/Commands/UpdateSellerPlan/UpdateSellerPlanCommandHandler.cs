@@ -1,5 +1,5 @@
-
 using eMarket.Application.Common.Interfaces;
+using eMarket.Domain.Businesses.Entities;
 using Microsoft.EntityFrameworkCore;
 using MediatR;
 
@@ -32,6 +32,23 @@ public sealed class UpdateSellerPlanCommandHandler
             request.Price,
             request.DurationDays,
             request.IsActive);
+
+        if (request.Features is not null)
+        {
+            var existingFeatures = await _dbContext.SellerPlanFeatures
+                .Where(x => x.SellerPlanId == request.Id)
+                .ToListAsync(cancellationToken);
+
+            _dbContext.SellerPlanFeatures.RemoveRange(existingFeatures);
+
+            var newFeatures = request.Features
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Select(x => x.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Select(x => SellerPlanFeature.Create(request.Id, x));
+
+            _dbContext.SellerPlanFeatures.AddRange(newFeatures);
+        }
 
         await _dbContext.SaveChangesAsync(cancellationToken);
 

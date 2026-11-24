@@ -1,25 +1,31 @@
-using MediatR;
 using eMarket.Application.Common.Interfaces;
 using eMarket.SharedKernel.DomainEvent;
+using MediatR;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace eMarket.Infrastructure.Messaging;
 
 public sealed class DomainEventDispatcher : IDomainEventDispatcher
 {
-    private readonly IPublisher _publisher;
+    private readonly IServiceScopeFactory _scopeFactory;
 
-    public DomainEventDispatcher(IPublisher publisher)
+    public DomainEventDispatcher(IServiceScopeFactory scopeFactory)
     {
-        _publisher = publisher;
+        _scopeFactory = scopeFactory;
     }
 
     public async Task DispatchAsync(
         IReadOnlyCollection<IDomainEvent> domainEvents,
         CancellationToken cancellationToken = default)
     {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+
+        var publisher = scope.ServiceProvider
+            .GetRequiredService<IPublisher>();
+
         foreach (var domainEvent in domainEvents)
         {
-            await _publisher.Publish(domainEvent, cancellationToken);
+            await publisher.Publish(domainEvent, cancellationToken);
         }
     }
 }

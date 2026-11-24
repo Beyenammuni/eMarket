@@ -129,6 +129,15 @@ public sealed class BusinessConfiguration
         builder.HasMany(x => x.Members)
             .WithOne()
             .HasForeignKey(x => x.BusinessId)
+
             .OnDelete(DeleteBehavior.Cascade);
+        builder.Navigation(x => x.Branches)
+    .UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        builder.HasMany(x => x.Branches)
+            .WithOne()
+            .HasForeignKey(x => x.BusinessId)
+            .OnDelete(DeleteBehavior.Cascade);
+
     }
 }

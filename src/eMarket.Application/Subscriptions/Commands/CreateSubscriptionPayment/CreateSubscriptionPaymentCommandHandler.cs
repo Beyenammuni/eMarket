@@ -353,12 +353,12 @@ internal sealed class CreateSubscriptionPaymentCommandHandler
             payment.Amount.Amount,
             payment.Amount.Currency.ToString(),
             callbackUrl,
-            new SubscriptionPaymentBuyer(
-                buyer.Name,
-                buyer.Surname,
-                buyer.Email,
-                buyer.Phone,
-                "74300864791"),
+           new SubscriptionPaymentBuyer(
+    buyer.Name,
+    buyer.Surname,
+    buyer.Email,
+    buyer.Phone,
+    identityNumber),
             new SubscriptionPaymentAddress(
                 deliveryAddress.FullName,
                 deliveryAddress.PhoneNumber,

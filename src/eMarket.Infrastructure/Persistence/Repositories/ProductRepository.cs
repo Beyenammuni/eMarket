@@ -152,4 +152,18 @@ public sealed class ProductRepository : IProductRepository
 
         return (items, totalCount);
     }
+    public async Task<List<Product>> GetByIdsAsync(
+    IReadOnlyCollection<ProductId> ids,
+    BusinessId businessId,
+    CancellationToken cancellationToken = default)
+    {
+        if (ids.Count == 0)
+            return [];
+
+        return await _context.Products
+            .Where(x =>
+                ids.Contains(x.Id) &&
+                x.BusinessId == businessId)
+            .ToListAsync(cancellationToken);
+    }
 }

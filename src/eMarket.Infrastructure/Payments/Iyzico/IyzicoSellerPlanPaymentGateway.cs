@@ -31,7 +31,6 @@ internal sealed class IyzicoSellerPlanPaymentGateway
         }
 
         var options = CreateOptions();
-
         var buyer = new Buyer
         {
             Id = request.BuyerId,
@@ -40,9 +39,9 @@ internal sealed class IyzicoSellerPlanPaymentGateway
             Email = request.BuyerEmail,
             GsmNumber = NormalizeTurkishPhone(request.BuyerPhone),
             IdentityNumber = request.BuyerIdentityNumber,
-            RegistrationAddress = "Turkey",
-            City = "Istanbul",
-            Country = "Turkey"
+            RegistrationAddress = request.BillingAddress.Description,
+            City = request.BillingAddress.City,
+            Country = request.BillingAddress.Country
         };
 
         var checkoutRequest = new CreateCheckoutFormInitializeRequest
@@ -53,9 +52,16 @@ internal sealed class IyzicoSellerPlanPaymentGateway
             Price = request.Amount.ToString("0.00", CultureInfo.InvariantCulture),
             PaidPrice = request.Amount.ToString("0.00", CultureInfo.InvariantCulture),
             Currency = request.Currency,
-            PaymentGroup = PaymentGroup.PRODUCT.ToString(),
+            PaymentGroup = PaymentGroup.LISTING.ToString(),
             CallbackUrl = request.CallbackUrl,
             Buyer = buyer,
+            BillingAddress = new Iyzipay.Model.Address
+            {
+                ContactName = request.BillingAddress.ContactName,
+                City = request.BillingAddress.City,
+                Country = request.BillingAddress.Country,
+                Description = request.BillingAddress.Description
+            },
             BasketItems =
             [
                 new BasketItem
@@ -102,10 +108,10 @@ internal sealed class IyzicoSellerPlanPaymentGateway
                 false, null, null, "Unable to initialize seller plan payment.");
         }
     }
-
     public async Task<PaymentCheckoutResult> GetCheckoutResultAsync(
-        string token,
-        CancellationToken cancellationToken = default)
+    string token,
+    string conversationId,
+    CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(token))
         {
@@ -117,8 +123,12 @@ internal sealed class IyzicoSellerPlanPaymentGateway
         try
         {
             var response = await CheckoutForm.Retrieve(
-                new RetrieveCheckoutFormRequest { Token = token },
-                CreateOptions());
+    new RetrieveCheckoutFormRequest
+    {
+        Token = token,
+        ConversationId = conversationId
+    },
+    CreateOptions());
 
             var success =
                 string.Equals(response.Status, Status.SUCCESS.ToString(),

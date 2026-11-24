@@ -2,6 +2,7 @@ using eMarket.Application.Common.Authorization;
 using eMarket.Application.Common.Interfaces;
 using eMarket.Application.Common.IRepositories;
 using eMarket.Domain.Businesses;
+using eMarket.Domain.Businesses.Entities;
 using eMarket.Domain.Businesses.ValueObjects;
 using eMarket.Domain.Identity;
 using eMarket.SharedKernel.Results;
@@ -20,17 +21,23 @@ internal sealed class AddBusinessMemberCommandHandler
     private readonly IIdentityDbContext _identityContext;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IBusinessAuthorization _authorization;
+    private readonly IBusinessDbContext _businessDbContext;
+    private readonly ICurrentUser _currentUser;
 
     public AddBusinessMemberCommandHandler(
         IBusinessRepository businessRepository,
         IIdentityDbContext identityContext,
         IUnitOfWork unitOfWork,
-        IBusinessAuthorization authorization)
+        IBusinessAuthorization authorization,
+        IBusinessDbContext businessDbContext,
+        ICurrentUser currentUser)
     {
         _businessRepository = businessRepository;
         _identityContext = identityContext;
         _unitOfWork = unitOfWork;
         _authorization = authorization;
+        _businessDbContext = businessDbContext;
+        _currentUser = currentUser;
     }
 
     public async Task<Result<AddBusinessMemberResponse>> Handle(
@@ -104,9 +111,24 @@ internal sealed class AddBusinessMemberCommandHandler
                 result.Error);
         }
 
-        await _unitOfWork.SaveChangesAsync(
-            cancellationToken);
+        var actorUserId = _currentUser.UserId;
 
+        if (actorUserId is null)
+        {
+            return Result<AddBusinessMemberResponse>.Failure(
+                BusinessErrors.UserNotAuthenticated);
+        }
+
+        _businessDbContext.BusinessActivityLogs.Add(
+            BusinessActivityLog.Create(
+                businessId,
+                actorUserId,
+                userId,
+                "MemberAdded",
+                $"Employee added with role: {role.Name}"
+            ));
+
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
         return Result<AddBusinessMemberResponse>.Success(
             new AddBusinessMemberResponse(
                 request.BusinessId,

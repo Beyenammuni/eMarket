@@ -1,7 +1,8 @@
-using eMarket.Application.Common.Interfaces;
 using eMarket.Application.Common.Authorization;
+using eMarket.Application.Common.Interfaces;
 using eMarket.Application.Common.IRepositories;
 using eMarket.Domain.Businesses;
+using eMarket.Domain.Businesses.Entities;
 using eMarket.Domain.Identity;
 using eMarket.SharedKernel.Results;
 using MediatR;
@@ -14,15 +15,20 @@ internal sealed class RemoveMemberHandler
     private readonly IBusinessRepository _repository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IBusinessAuthorization _authorization;
-
+    private readonly IBusinessDbContext _businessDbContext;
+    private readonly ICurrentUser _currentUser;
     public RemoveMemberHandler(
         IBusinessRepository repository,
         IUnitOfWork unitOfWork,
-        IBusinessAuthorization authorization)
+        IBusinessAuthorization authorization,
+        IBusinessDbContext businessDbContext,
+        ICurrentUser currentUser)
     {
         _repository = repository;
         _unitOfWork = unitOfWork;
         _authorization = authorization;
+        _businessDbContext = businessDbContext;
+        _currentUser = currentUser;
     }
 
     public async Task<Result<RemoveMemberResponse>> Handle(
@@ -51,14 +57,31 @@ internal sealed class RemoveMemberHandler
             return Result<RemoveMemberResponse>.Failure(
                 BusinessErrors.NotFound);
         }
+        var actorUserId = _currentUser.UserId;
 
-        var result = business.RemoveMember(
-            UserId.Create(request.UserId));
+        if (actorUserId is null)
+        {
+            return Result<RemoveMemberResponse>.Failure(
+                BusinessErrors.UserNotAuthenticated);
+        }
+
+        var targetUserId = UserId.Create(request.UserId);
+
+        var result = business.RemoveMember(targetUserId);
 
         if (result.IsFailure)
         {
             return Result<RemoveMemberResponse>.Failure(result.Error);
         }
+
+        _businessDbContext.BusinessActivityLogs.Add(
+    BusinessActivityLog.Create(
+        businessId,
+        actorUserId,
+        targetUserId,
+        "MemberRemoved",
+        "A business member was removed."
+    ));
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 

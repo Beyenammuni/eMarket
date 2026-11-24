@@ -47,11 +47,30 @@ internal sealed class RefreshTokenCommandHandler
 
         var now = DateTime.UtcNow;
 
+        Console.WriteLine($"Refresh token found: {storedToken is not null}");
+
+        if (storedToken is not null)
+        {
+            Console.WriteLine($"Valid before processing: {storedToken.IsValid(now)}");
+            Console.WriteLine($"Revoked before processing: {storedToken.RevokedAt is not null}");
+            Console.WriteLine($"Expires at: {storedToken.ExpiresAt:O}");
+        }
+
         if (storedToken is null || !storedToken.IsValid(now))
         {
             return Result<RefreshTokenResponse>.Failure(
                 UserErrors.InvalidRefreshToken);
         }
+        if (storedToken is null || !storedToken.IsValid(now))
+        {
+            return Result<RefreshTokenResponse>.Failure(
+                UserErrors.InvalidRefreshToken);
+        }
+        Console.WriteLine(
+    $"Incoming token length: {request.RefreshToken.Length}");
+
+        Console.WriteLine(
+            $"Contains percent encoding: {request.RefreshToken.Contains('%')}");
 
         var user = await _context.Users
             .FirstOrDefaultAsync(
@@ -87,6 +106,7 @@ internal sealed class RefreshTokenCommandHandler
             newRefreshToken);
 
         storedToken.Revoke(now, newRefreshTokenHash);
+       
 
         _context.RefreshTokens.Add(
     new eMarket.Domain.Identity.Entities.RefreshToken(

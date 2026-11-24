@@ -14,7 +14,10 @@ public sealed class Business : AggregateRoot<BusinessId>
     private const decimal DefaultShippingFee = 0m;
 
     private readonly List<BusinessMember> _members = new();
+    private readonly List<Branch> _branches = [];
 
+    public IReadOnlyCollection<Branch> Branches =>
+        _branches.AsReadOnly();
     private Business()
     {
     }
@@ -466,8 +469,78 @@ public Result UpdateContactDetails(
 
         return Result.Success();
     }
+    public Result AddBranch(Branch branch)
+    {
+        if (branch.BusinessId != Id)
+        {
+            return Result.Failure(
+                new Error(
+                    "Business.Branch.InvalidBusiness",
+                    "Branch does not belong to this business."));
+        }
 
+        if (_branches.Any(x => x.IsMain) && branch.IsMain)
+        {
+            return Result.Failure(
+                new Error(
+                    "Business.Branch.MainAlreadyExists",
+                    "Business already has a main branch."));
+        }
+
+        if (_branches.Any(x => x.Id == branch.Id))
+        {
+            return Result.Failure(
+                new Error(
+                    "Business.Branch.AlreadyExists",
+                    "Branch already exists."));
+        }
+
+        _branches.Add(branch);
+
+        return Result.Success();
+    }
+    public Result DeactivateBranch(BranchId branchId)
+    {
+        var branch = _branches.FirstOrDefault(x => x.Id == branchId);
+
+        if (branch is null)
+        {
+            return Result.Failure(
+                new Error(
+                    "Business.Branch.NotFound",
+                    "Branch was not found."));
+        }
+
+        if (branch.IsMain)
+        {
+            return Result.Failure(
+                new Error(
+                    "Business.Branch.CannotDeactivateMain",
+                    "The main branch cannot be deactivated."));
+        }
+
+        branch.Deactivate();
+
+        return Result.Success();
+    }
+    public Result ActivateBranch(BranchId branchId)
+    {
+        var branch = _branches.FirstOrDefault(x => x.Id == branchId);
+
+        if (branch is null)
+        {
+            return Result.Failure(
+                new Error(
+                    "Business.Branch.NotFound",
+                    "Branch was not found."));
+        }
+
+        branch.Activate();
+
+        return Result.Success();
+    }
     private bool HasActiveMember(
+
         UserId userId)
     {
         return _members.Any(x =>

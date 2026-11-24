@@ -9,8 +9,13 @@ public static class BusinessEndpoints
     {
         // Commands
         app.MapCreateBusinessEndpoint();
+        app.MapCreateBranchEndpoint();
+        app.MapUpdateBranchEndpoint();
+        app.MapDeactivateBranchEndpoint();
+        app.MapActivateBranchEndpoint();
         app.MapAddBusinessMemberEndpoint();
         app.MapChangeMemberRoleEndpoint();
+        app.MapSetMemberPermissionEndpoint();
         app.MapRemoveMemberEndpoint();
         app.MapTransferOwnershipEndpoint();
         app.MapUpdateBusinessEndpoint();
@@ -20,11 +25,17 @@ public static class BusinessEndpoints
         app.MapActivateBusinessEndpoint();
         app.MapSetBusinessSubscriptionSupportEndpoint();
         app.MapStartSellerPlanSubscriptionEndpoint();
+        app.MapActivateFreeSellerPlanEndpoint();
         // Queries
+        app.MapGetBusinessBranchesEndpoint();
+        app.MapGetCurrentSellerPlanSubscriptionEndpoint();
+        app.MapGetBusinessActivityLogs();
+        app.MapGetSellerPlanFeaturesEndpoint();
         app.MapGetAvailableBusinessMembers();
         app.MapGetBusinessByIdEndpoint();
         app.MapGetMyBusinessesEndpoint();
         app.MapMapGetBusinessMembersEndpoint();
+        app.MapGetAvailableSellerPlansEndpoint();
         return app;
     }
 }

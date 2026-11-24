@@ -7,6 +7,7 @@ using eMarket.Domain.Identity;
 using eMarket.Domain.Payments;
 using eMarket.Domain.Sales.Orders;
 using eMarket.Infrastructure.Persistence;
+using eMarket.SharedKernel.Constants;
 using Microsoft.EntityFrameworkCore;
 
 namespace eMarket.Infrastructure.Persistence.Repositories;
@@ -30,28 +31,40 @@ public sealed class SellerDashboardRepository(
         var today = DateTime.UtcNow.Date;
         var tomorrow = today.AddDays(1);
 
+        if (!businessId.HasValue || businessId.Value == Guid.Empty)
+            throw new ArgumentException("BusinessId is required.");
 
-        var businessQuery = context.BusinessMembers
-            .AsNoTracking()
-            .Where(x =>
-                x.UserId == userId &&
-                x.IsActive);
+        List<BusinessId> businessIds;
 
-        if (businessId.HasValue)
+        if (currentUser.IsInRole(Roles.SuperAdmin))
         {
-            businessQuery = businessQuery.Where(
-                x => x.BusinessId == businessId.Value);
+            var businessExists = await context.Businesses
+                .AsNoTracking()
+                .AnyAsync(
+                    x => x.Id == BusinessId.Create(businessId.Value),
+                    cancellationToken);
+
+            if (!businessExists)
+                throw new KeyNotFoundException("Business not found.");
+
+            businessIds = [BusinessId.Create(businessId.Value)];
         }
-
-        var businessIds = await businessQuery
-            .Select(x => x.BusinessId)
-            .Distinct()
-            .ToListAsync(cancellationToken);
-
-        if (businessId.HasValue && businessIds.Count == 0)
+        else
         {
-            throw new UnauthorizedAccessException(
-                "You are not authorized to access this business.");
+            businessIds = await context.BusinessMembers
+                .AsNoTracking()
+                .Where(x =>
+                    x.UserId == userId &&
+                    x.BusinessId == BusinessId.Create(businessId.Value) &&
+                    x.IsActive)
+                .Select(x => x.BusinessId)
+                .ToListAsync(cancellationToken);
+
+            if (businessIds.Count == 0)
+            {
+                throw new UnauthorizedAccessException(
+                    "You are not authorized to access this business.");
+            }
         }
 
 

@@ -1,6 +1,9 @@
+
 using eMarket.Application.Common.Authorization;
+using eMarket.Application.Common.Constants;
 using eMarket.Application.Common.Interfaces;
 using eMarket.Domain.Businesses;
+using eMarket.Domain.Businesses.Entities;
 using eMarket.Domain.Businesses.ValueObjects;
 using eMarket.Domain.Identity;
 using eMarket.Infrastructure.Persistence;
@@ -12,13 +15,16 @@ public sealed class BusinessAuthorization : IBusinessAuthorization
 {
     private readonly AppDbContext _context;
     private readonly ICurrentUser _currentUser;
+    private readonly ISellerPlanFeatureService _sellerPlanFeatureService;
 
     public BusinessAuthorization(
         AppDbContext context,
-        ICurrentUser currentUser)
+        ICurrentUser currentUser,
+        ISellerPlanFeatureService sellerPlanFeatureService)
     {
         _context = context;
         _currentUser = currentUser;
+        _sellerPlanFeatureService = sellerPlanFeatureService;
     }
 
     public Task<bool> IsMemberAsync(
@@ -59,6 +65,7 @@ public sealed class BusinessAuthorization : IBusinessAuthorization
         }
 
         var userId = _currentUser.UserId;
+
         if (userId is null)
             return false;
 
@@ -69,14 +76,45 @@ public sealed class BusinessAuthorization : IBusinessAuthorization
                      x.UserId == userId &&
                      x.IsActive,
                 cancellationToken);
-        Console.WriteLine(
-    $"BusinessId: {businessId}, UserId: {userId}, MemberRole: {member?.Role?.Name}"); 
-        return member is not null &&
-               BusinessRolePermissions.HasPermission(member.Role, permission);
+
+        if (member is null)
+            return false;
+
+        // Owner permissions are never customized.
+        if (member.Role.Name == BusinessRole.Owner.Name)
+        {
+            return BusinessRolePermissions.HasPermission(
+                member.Role,
+                permission);
+        }
+
+        var hasAdvancedManagement =
+            await _sellerPlanFeatureService.HasFeatureAsync(
+                businessId.Value,
+                SellerPlanFeatureCodes.Staff.AdvancedManagement,
+                cancellationToken);
+
+        if (hasAdvancedManagement)
+        {
+            var customPermission = await _context.BusinessMemberPermissions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(
+                    x => x.BusinessMemberId == member.Id &&
+                         x.Permission == permission,
+                    cancellationToken);
+
+            if (customPermission is not null)
+                return customPermission.IsGranted;
+        }
+
+        return BusinessRolePermissions.HasPermission(
+            member.Role,
+            permission);
     }
+
     public async Task<bool> HasPermissionOnAnyBusinessAsync(
-    string permission,
-    CancellationToken cancellationToken = default)
+        string permission,
+        CancellationToken cancellationToken = default)
     {
         var userId = _currentUser.UserId;
 

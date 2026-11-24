@@ -14,4 +14,11 @@ public sealed class UnitOfWork : IUnitOfWork
     public Task<int> SaveChangesAsync(
         CancellationToken cancellationToken = default)
         => _context.SaveChangesAsync(cancellationToken);
+
+    public Task ExecuteInSerializableTransactionAsync(
+        Func<CancellationToken, Task> operation,
+        CancellationToken cancellationToken = default)
+        => _context.ExecuteInSerializableTransactionAsync(
+            operation,
+            cancellationToken);
 }

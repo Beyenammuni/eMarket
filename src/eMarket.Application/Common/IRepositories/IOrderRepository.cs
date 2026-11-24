@@ -24,4 +24,7 @@ public interface IOrderRepository
     Task<List<Order>> GetByBusinessIdAsync(
     Guid businessId,
     CancellationToken cancellationToken = default);
+    Task<bool> HasActiveOrdersAsync(
+    Guid branchId,
+    CancellationToken cancellationToken = default);
 }

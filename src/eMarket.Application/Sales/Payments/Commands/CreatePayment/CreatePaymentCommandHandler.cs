@@ -1,6 +1,7 @@
 using eMarket.Application.Common.Interfaces;
 using eMarket.Application.Common.Interfaces.Payments;
 using eMarket.Application.Common.IRepositories;
+using eMarket.Application.Sales.Orders.Services;
 using eMarket.Domain.Catalog.Products.ValueObjects;
 using eMarket.Domain.Payments;
 using eMarket.Domain.Sales.Orders;
@@ -24,6 +25,7 @@ internal sealed class CreatePaymentCommandHandler
     private readonly IConfiguration _configuration;
     private readonly IUserRepository _userRepository;
     private readonly ICustomerIdentityProtector _identityProtector;
+        private readonly OrderStockReleaseService _stockReleaseService;
     public CreatePaymentCommandHandler(
         IOrderRepository orderRepository,
         IBusinessRepository businessRepository,
@@ -33,7 +35,8 @@ internal sealed class CreatePaymentCommandHandler
         ICurrentUser currentUser,
         IConfiguration configuration,
         IUserRepository userRepository,
-        ICustomerIdentityProtector identityProtector)
+        ICustomerIdentityProtector identityProtector,
+        OrderStockReleaseService stockReleaseService)
     {
         _orderRepository = orderRepository;
         _businessRepository = businessRepository;
@@ -44,6 +47,7 @@ internal sealed class CreatePaymentCommandHandler
         _configuration = configuration;
         _userRepository = userRepository;
         _identityProtector = identityProtector;
+        _stockReleaseService = stockReleaseService;
     }
 
     public async Task<Result<CreatePaymentResponse>> Handle(
@@ -274,8 +278,15 @@ internal sealed class CreatePaymentCommandHandler
             if (failedResult.IsFailure)
                 return Result<CreatePaymentResponse>.Failure(failedResult.Error);
 
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            var releaseResult = await _stockReleaseService.ReleaseAsync(
+     order,
+     cancellationToken);
 
+            if (releaseResult.IsFailure)
+            {
+                return Result<CreatePaymentResponse>.Failure(
+                    releaseResult.Error); 
+            }
             return Result<CreatePaymentResponse>.Failure(
                 new Error(
                     "Payment.ProviderFailed",

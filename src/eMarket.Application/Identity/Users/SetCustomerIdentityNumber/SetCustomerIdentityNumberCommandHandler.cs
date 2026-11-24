@@ -1,6 +1,6 @@
+
 using eMarket.Application.Common.Interfaces;
 using eMarket.Application.Common.IRepositories;
-using eMarket.Domain.Identity;
 using eMarket.SharedKernel.Results;
 using MediatR;
 
@@ -34,19 +34,19 @@ internal sealed class SetCustomerIdentityNumberCommandHandler
             _currentUser.UserId is null)
         {
             return Result.Failure(
-                new Error("Auth.Unauthorized", "User is not authenticated."));
+                new Error(
+                    "Auth.Unauthorized",
+                    "User is not authenticated."));
         }
 
         var identityNumber = request.IdentityNumber?.Trim();
 
-        if (string.IsNullOrWhiteSpace(identityNumber) ||
-            identityNumber.Length != 11 ||
-            !identityNumber.All(char.IsDigit))
+        if (!IsValidTurkishIdentityNumber(identityNumber))
         {
             return Result.Failure(
                 new Error(
                     "User.InvalidIdentityNumber",
-                    "Turkish identity number must contain 11 digits."));
+                    "Turkish identity number is invalid."));
         }
 
         var user = await _userRepository.GetByIdAsync(
@@ -56,11 +56,13 @@ internal sealed class SetCustomerIdentityNumberCommandHandler
         if (user is null)
         {
             return Result.Failure(
-                new Error("User.NotFound", "User was not found."));
+                new Error(
+                    "User.NotFound",
+                    "User was not found."));
         }
 
         var encryptedIdentityNumber =
-            _identityProtector.Protect(identityNumber);
+            _identityProtector.Protect(identityNumber!);
 
         var updateResult =
             user.SetEncryptedIdentityNumber(encryptedIdentityNumber);
@@ -71,5 +73,36 @@ internal sealed class SetCustomerIdentityNumberCommandHandler
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result.Success();
+    }
+
+    private static bool IsValidTurkishIdentityNumber(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value) ||
+            value.Length != 11 ||
+            value[0] == '0' ||
+            !value.All(c => c is >= '0' and <= '9'))
+        {
+            return false;
+        }
+
+        var digits = value.Select(c => c - '0').ToArray();
+
+        var oddSum =
+            digits[0] + digits[2] + digits[4] +
+            digits[6] + digits[8];
+
+        var evenSum =
+            digits[1] + digits[3] +
+            digits[5] + digits[7];
+
+        var tenthDigit = ((oddSum * 7) - evenSum) % 10;
+
+        if (tenthDigit < 0)
+            tenthDigit += 10;
+
+        var eleventhDigit = digits.Take(10).Sum() % 10;
+
+        return digits[9] == tenthDigit &&
+               digits[10] == eleventhDigit;
     }
 }

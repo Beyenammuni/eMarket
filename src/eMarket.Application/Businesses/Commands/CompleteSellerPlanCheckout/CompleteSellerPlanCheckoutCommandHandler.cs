@@ -71,8 +71,9 @@ public sealed class CompleteSellerPlanCheckoutCommandHandler
 
         // Verify payment with the provider before opening the transaction.
         var checkout = await _paymentGateway.GetCheckoutResultAsync(
-            request.Token,
-            cancellationToken);
+       request.Token,
+       request.PaymentId.ToString(),
+       cancellationToken);
 
         if (!checkout.IsSuccess ||
             string.IsNullOrWhiteSpace(checkout.PaymentId))
@@ -201,13 +202,14 @@ public sealed class CompleteSellerPlanCheckoutCommandHandler
                 var now = DateTime.UtcNow;
 
                 var currentSubscriptionExpiry =
-                    await _businessDb.SellerPlanSubscriptions
-                        .Where(x =>
-                            x.BusinessId == payment.BusinessId &&
-                            x.Status == "Active" &&
-                            x.ExpiresAt > now)
-                        .Select(x => (DateTime?)x.ExpiresAt)
-                        .MaxAsync(ct);
+     await _businessDb.SellerPlanSubscriptions
+         .Where(x =>
+             x.BusinessId == payment.BusinessId &&
+             x.Status == "Active" &&
+             x.ExpiresAt > now &&
+             x.ExpiresAt < DateTime.MaxValue)
+         .Select(x => (DateTime?)x.ExpiresAt)
+         .MaxAsync(ct);
 
                 var activationStart =
                     currentSubscriptionExpiry.HasValue &&

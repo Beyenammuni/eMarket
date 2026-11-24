@@ -1,4 +1,3 @@
-
 using MediatR;
 
 namespace eMarket.Application.Businesses.Commands.CreateSellerPlan;
@@ -8,5 +7,6 @@ public sealed record CreateSellerPlanCommand(
     string Name,
     decimal Price,
     int DurationDays,
-    string Currency = "TRY"
+    string Currency = "TRY",
+    IReadOnlyList<string>? Features = null
 ) : IRequest<Guid>;

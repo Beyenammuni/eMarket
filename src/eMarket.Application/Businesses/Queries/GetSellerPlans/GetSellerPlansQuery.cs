@@ -14,5 +14,6 @@ public sealed record SellerPlanDto(
     string Currency,
     int DurationDays,
     bool IsActive,
-    DateTime UpdatedAt
+    DateTime UpdatedAt,
+    IReadOnlyList<string> Features
 );

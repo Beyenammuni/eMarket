@@ -1,7 +1,7 @@
-
 using eMarket.Application.Common.Interfaces;
 using eMarket.Domain.Businesses.Entities;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 
 namespace eMarket.Application.Businesses.Commands.CreateSellerPlan;
 
@@ -21,15 +21,20 @@ public sealed class CreateSellerPlanCommandHandler
     {
         var code = request.Code.Trim().ToUpperInvariant();
 
-        var exists = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions
+        var exists = await _dbContext.SellerPlans
             .AnyAsync(
-                _dbContext.SellerPlans,
                 plan => plan.Code == code,
                 cancellationToken);
 
         if (exists)
             throw new InvalidOperationException(
                 $"Seller plan code '{code}' already exists.");
+
+        var features = (request.Features ?? [])
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Select(x => x.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
 
         var plan = SellerPlan.Create(
             code,
@@ -39,6 +44,11 @@ public sealed class CreateSellerPlanCommandHandler
             request.Currency);
 
         _dbContext.SellerPlans.Add(plan);
+
+        var planFeatures = features.Select(feature =>
+            SellerPlanFeature.Create(plan.Id, feature));
+
+        _dbContext.SellerPlanFeatures.AddRange(planFeatures);
 
         await _dbContext.SaveChangesAsync(cancellationToken);
 

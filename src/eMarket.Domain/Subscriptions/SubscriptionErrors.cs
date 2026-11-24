@@ -11,4 +11,8 @@ public static class SubscriptionErrors
     public static readonly Error NotActive = new("Subscription.NotActive", "Subscription is not active.");
     public static readonly Error InvalidDeliveryDay = new("Subscription.InvalidDeliveryDay", "Delivery day is invalid.");
     public static readonly Error DifferentBusinesses = new("Subscription.DifferentBusinesses", "All subscription products must belong to the selected business.");
+
+    public static readonly Error FeatureNotAvailable = new(
+    "Subscription.FeatureNotAvailable",
+    "This feature requires a PRO subscription.");
 }

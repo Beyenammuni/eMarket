@@ -38,4 +38,8 @@ public interface IProductRepository
         string? sortBy,
         bool sortDescending,
         CancellationToken cancellationToken = default);
+    Task<List<Product>> GetByIdsAsync(
+    IReadOnlyCollection<ProductId> ids,
+    BusinessId businessId,
+    CancellationToken cancellationToken = default);
 }

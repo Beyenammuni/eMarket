@@ -7,7 +7,10 @@ using eMarket.Domain.Catalog.Products.Options;
 using eMarket.Domain.Catalog.Products.Variants;
 using eMarket.Domain.Identity;
 using eMarket.Domain.Identity.Entities;
+using eMarket.Domain.Inventory.Entities;
+using eMarket.Domain.Notifications.Entities;
 using eMarket.Domain.Payments;
+using eMarket.Domain.Promotions.Entities;
 using eMarket.Domain.Sales.Carts;
 using eMarket.Domain.Sales.Orders;
 using eMarket.Domain.Subscriptions;
@@ -15,12 +18,15 @@ using eMarket.Infrastructure.Persistence.Configurations.Identity;
 using eMarket.SharedKernel.Exceptions;
 using Microsoft.EntityFrameworkCore;
 using System.Data;
-
 namespace eMarket.Infrastructure.Persistence;
 
-public sealed class AppDbContext : DbContext ,IBusinessDbContext,
+public sealed class AppDbContext : DbContext
+    ,IBusinessDbContext,
     ICatalogDbContext,
-    IIdentityDbContext, ISubscriptionDbContext
+    IIdentityDbContext,
+    ISubscriptionDbContext,
+    IReportsDbContext,
+    INotificationDbContext
 {
     public AppDbContext(DbContextOptions<AppDbContext> options)
         : base(options)
@@ -36,10 +42,20 @@ public sealed class AppDbContext : DbContext ,IBusinessDbContext,
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<BusinessMember> BusinessMembers => Set<BusinessMember>();
+    public DbSet<Branch> Branches => Set<Branch>();
+    public DbSet<BranchInventory> BranchInventories
+    => Set<BranchInventory>();
+    public DbSet<BusinessActivityLog> BusinessActivityLogs
+    => Set<BusinessActivityLog>();
+    public DbSet<BusinessMemberPermission> BusinessMemberPermissions
+    => Set<BusinessMemberPermission>();
     public DbSet<Subscription> Subscriptions => Set<Subscription>();
     public DbSet<ProductVariant> ProductVariants => Set<ProductVariant>();
     public DbSet<ProductOptionGroup> ProductOptionGroups => Set<ProductOptionGroup>();
     public DbSet<ProductOption> ProductOptions => Set<ProductOption>();
+    public DbSet<Promotion> Promotions => Set<Promotion>();
+
+    public DbSet<PromotionItem> PromotionItems => Set<PromotionItem>();
     public DbSet<Domain.Identity.Entities.UserCredential> UserCredentials => Set<Domain.Identity.Entities.UserCredential>();
     public DbSet<Domain.Identity.Entities.PasswordResetToken> PasswordResetTokens => Set<Domain.Identity.Entities.PasswordResetToken>();
     public DbSet<Domain.Identity.Entities.UserRoleAssignment> UserRoleAssignments => Set<Domain.Identity.Entities.UserRoleAssignment>();
@@ -48,6 +64,9 @@ public sealed class AppDbContext : DbContext ,IBusinessDbContext,
         => Set<SellerPlanSubscription>();
     public DbSet<SellerPlanPayment> SellerPlanPayments
     => Set<SellerPlanPayment>();
+    public DbSet<SellerPlanFeature> SellerPlanFeatures
+    => Set<SellerPlanFeature>();
+    public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public async Task ExecuteInSerializableTransactionAsync(
     Func<CancellationToken, Task> operation,

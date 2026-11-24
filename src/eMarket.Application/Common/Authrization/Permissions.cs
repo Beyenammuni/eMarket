@@ -62,7 +62,11 @@ public static class Permissions
         public const string View = "Payments.View";
         public const string Manage = "Payments.Manage";
     }
-
+    public static class Branches
+    {
+        public const string View = "Branches.View";
+        public const string Manage = "Branches.Manage";
+    }
     public static class Subscriptions
     {
         public const string View = "Subscriptions.View";
@@ -79,5 +83,14 @@ public static class Permissions
         public const string UsersView = "Admin.Users.View";
         public const string UsersManageRoles = "Admin.Users.ManageRoles";
         public const string UsersDelete = "Admin.Users.Delete";
+    }
+    public static class Promotions
+    {
+        public const string View = "Promotions.View";
+        public const string Create = "Promotions.Create";
+        public const string Update = "Promotions.Update";
+        public const string Delete = "Promotions.Delete";
+        public const string Activate = "Promotions.Activate";
+        public const string Pause = "Promotions.Pause";
     }
 }

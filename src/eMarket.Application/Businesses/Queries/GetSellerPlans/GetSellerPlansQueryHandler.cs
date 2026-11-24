@@ -1,4 +1,3 @@
-
 using eMarket.Application.Common.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using MediatR;
@@ -24,21 +23,32 @@ public sealed class GetSellerPlansQueryHandler
             .AsQueryable();
 
         if (request.ActiveOnly)
-        {
             query = query.Where(plan => plan.IsActive);
-        }
 
-        return await query
+        var plans = await query
             .OrderBy(plan => plan.Price)
-            .Select(plan => new SellerPlanDto(
-                plan.Id,
-                plan.Code,
-                plan.Name,
-                plan.Price,
-                plan.Currency,
-                plan.DurationDays,
-                plan.IsActive,
-                plan.UpdatedAt))
             .ToListAsync(cancellationToken);
+
+        var planIds = plans.Select(x => x.Id).ToList();
+
+        var features = await _dbContext.SellerPlanFeatures
+            .AsNoTracking()
+            .Where(x => planIds.Contains(x.SellerPlanId))
+            .ToListAsync(cancellationToken);
+
+        return plans.Select(plan => new SellerPlanDto(
+            plan.Id,
+            plan.Code,
+            plan.Name,
+            plan.Price,
+            plan.Currency,
+            plan.DurationDays,
+            plan.IsActive,
+            plan.UpdatedAt,
+            features
+                .Where(x => x.SellerPlanId == plan.Id)
+                .Select(x => x.Code)
+                .ToList()
+        )).ToList();
     }
 }

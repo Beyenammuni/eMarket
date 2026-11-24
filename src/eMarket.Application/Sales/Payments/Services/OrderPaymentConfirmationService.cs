@@ -1,30 +1,35 @@
-using System.Globalization;
 using eMarket.Application.Common.Interfaces;
 using eMarket.Application.Common.Interfaces.Payments;
 using eMarket.Application.Common.IRepositories;
+using eMarket.Application.Sales.Orders.Services;
 using eMarket.Domain.Payments;
 using eMarket.Domain.Sales.Orders;
 using eMarket.SharedKernel.Results;
+using Microsoft.Extensions.Logging;
+using System.Globalization;
 
 namespace eMarket.Application.Sales.Payments.Services;
 
 public sealed class OrderPaymentConfirmationService
 {
-    private readonly IPaymentRepository _paymentRepository;
     private readonly IOrderRepository _orderRepository;
     private readonly IPaymentGateway _paymentGateway;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly OrderStockReleaseService _stockReleaseService;
+    private readonly ILogger<OrderPaymentConfirmationService> _logger;
 
     public OrderPaymentConfirmationService(
-        IPaymentRepository paymentRepository,
         IOrderRepository orderRepository,
         IPaymentGateway paymentGateway,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        OrderStockReleaseService stockReleaseService,
+        ILogger<OrderPaymentConfirmationService> logger)
     {
-        _paymentRepository = paymentRepository;
         _orderRepository = orderRepository;
         _paymentGateway = paymentGateway;
         _unitOfWork = unitOfWork;
+        _stockReleaseService = stockReleaseService;
+        _logger = logger;
     }
 
     public async Task<Result> ConfirmAsync(
@@ -59,30 +64,61 @@ public sealed class OrderPaymentConfirmationService
         var checkout = verifiedResult ??
     await _paymentGateway.GetCheckoutResultAsync(
         payment.CheckoutToken, cancellationToken);
-       
-        if (checkout.VerificationStatus !=
-                PaymentVerificationStatus.Succeeded ||
+
+        _logger.LogInformation(
+    """
+    iyzico Checkout Verification:
+    Expected ConversationId: {ExpectedConversationId}
+    Actual ConversationId: {ActualConversationId}
+    Expected BasketId: {ExpectedBasketId}
+    Actual BasketId: {ActualBasketId}
+    VerificationStatus: {VerificationStatus}
+    """,
+    payment.Id.Value,
+    checkout.ConversationId,
+    order.Id.Value,
+    checkout.BasketId,
+    checkout.VerificationStatus);
+        // Verify references before handling any payment status.
+        if (
+      (!string.IsNullOrWhiteSpace(checkout.ConversationId) &&
+       !string.Equals(
+           checkout.ConversationId,
+           payment.Id.Value.ToString(),
+           StringComparison.OrdinalIgnoreCase))
+      ||
+      !string.Equals(
+          checkout.BasketId,
+          order.Id.Value.ToString(),
+          StringComparison.OrdinalIgnoreCase)
+  )
+        {
+            return Result.Failure(
+                new Error(
+                    "Payment.ReferenceMismatch",
+                    "The payment references do not match."));
+        }
+        // Payment failed: mark it failed and release reserved stock.
+        if (checkout.VerificationStatus == PaymentVerificationStatus.Failed)
+        {
+            var failedResult = payment.MarkAsFailed();
+
+            if (failedResult.IsFailure)
+                return failedResult;
+
+            return await _stockReleaseService.ReleaseAsync(
+                order,
+                cancellationToken);
+        }
+
+        // Pending or Unknown: keep stock reserved.
+        if (checkout.VerificationStatus != PaymentVerificationStatus.Succeeded ||
             string.IsNullOrWhiteSpace(checkout.PaymentId))
         {
             return Result.Failure(
                 new Error(
                     "Payment.NotVerified",
                     "The payment has not been verified as successful."));
-        }
-
-        if (!string.Equals(
-                checkout.ConversationId,
-                payment.Id.Value.ToString(),
-                StringComparison.OrdinalIgnoreCase) ||
-            !string.Equals(
-                checkout.BasketId,
-                order.Id.Value.ToString(),
-                StringComparison.OrdinalIgnoreCase))
-        {
-            return Result.Failure(
-                new Error(
-                    "Payment.ReferenceMismatch",
-                    "The payment references do not match."));
         }
 
         if (!decimal.TryParse(

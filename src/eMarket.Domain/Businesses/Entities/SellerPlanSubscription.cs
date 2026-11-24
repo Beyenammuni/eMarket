@@ -60,7 +60,18 @@ public sealed class SellerPlanSubscription
         ProviderPaymentId = providerPaymentId;
         Status = "Active";
     }
+    public void ActivateFree()
+    {
+        if (Status != "Pending")
+            throw new InvalidOperationException(
+                "Only pending subscriptions can be activated.");
 
+        StartedAt = DateTime.UtcNow;
+        ExpiresAt = DateTime.MaxValue;
+        ProviderPaymentId = null;
+        PaymentToken = null;
+        Status = "Active";
+    }
     public void MarkAsFailed()
     {
         if (Status == "Active")

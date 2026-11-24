@@ -1,9 +1,7 @@
 using eMarket.Application.Common.Interfaces;
 using eMarket.Application.Common.Interfaces.Payments;
 using eMarket.Application.Common.IRepositories;
-using eMarket.Application.Sales.Orders.Services;
 using eMarket.Application.Sales.Payments.Services;
-using eMarket.Domain.Payments;
 using eMarket.Domain.Sales.Orders;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -69,9 +67,6 @@ public sealed class ExpiredOrderPaymentWorker : BackgroundService
 
         var confirmationService = scope.ServiceProvider
             .GetRequiredService<OrderPaymentConfirmationService>();
-
-        var stockReleaseService = scope.ServiceProvider
-            .GetRequiredService<OrderStockReleaseService>();
 
         var paymentGateway = scope.ServiceProvider
             .GetRequiredService<IPaymentGateway>();
@@ -142,14 +137,18 @@ public sealed class ExpiredOrderPaymentWorker : BackgroundService
                     }
                 }
 
-                if (!string.Equals(
-                        checkout.ConversationId,
-                        payment.Id.Value.ToString(),
-                        StringComparison.OrdinalIgnoreCase) ||
-                    !string.Equals(
-                        checkout.BasketId,
-                        order.Id.Value.ToString(),
-                        StringComparison.OrdinalIgnoreCase))
+                if (
+    (!string.IsNullOrWhiteSpace(checkout.ConversationId) &&
+     !string.Equals(
+         checkout.ConversationId,
+         payment.Id.Value.ToString(),
+         StringComparison.OrdinalIgnoreCase))
+    ||
+    !string.Equals(
+        checkout.BasketId,
+        order.Id.Value.ToString(),
+        StringComparison.OrdinalIgnoreCase)
+)
                 {
                     _logger.LogWarning(
                         "Payment references mismatch for payment {PaymentId}.",
@@ -179,24 +178,20 @@ public sealed class ExpiredOrderPaymentWorker : BackgroundService
                 }
 
                 if (checkout.VerificationStatus ==
-                    PaymentVerificationStatus.Failed)
+     PaymentVerificationStatus.Failed)
                 {
-                    var failureResult = payment.MarkAsFailed();
+                    var result = await confirmationService.ConfirmAsync(
+                        payment,
+                        payment.CheckoutToken,
+                        cancellationToken,
+                        checkout);
 
-                    if (failureResult.IsFailure)
-                        continue;
-
-                    var releaseResult =
-                        await stockReleaseService.ReleaseAsync(
-                            order,
-                            cancellationToken);
-                    if (releaseResult.IsFailure)
+                    if (result.IsFailure)
                     {
                         _logger.LogWarning(
-                            "Could not release stock for order {OrderId}.",
-                            order.Id.Value);
-
-                        return;
+                            "Could not process failed payment {PaymentId}: {Error}.",
+                            payment.Id.Value,
+                            result.Error);
                     }
 
                     continue;
